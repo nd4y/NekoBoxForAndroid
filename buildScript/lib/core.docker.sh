@@ -64,8 +64,8 @@ if [ -f "buildScript/lib/core/get_source_env.sh" ]; then
   source "buildScript/lib/core/get_source_env.sh"
 fi
 
-GO_VERSION="${GO_VERSION:-1.25.10}"
-BOOTSTRAP_GO_VERSION="${BOOTSTRAP_GO_VERSION:-1.25.10}"
+GO_VERSION="${GO_VERSION:-1.26.7}"
+BOOTSTRAP_GO_VERSION="${BOOTSTRAP_GO_VERSION:-1.26.7}"
 GO_PATCH_FILE="${GO_PATCH_FILE:-buildScript/lib/core/goruntime-boottime-over-monotonic.diff}"
 DOCKERFILE="${DOCKERFILE:-buildScript/lib/core/Dockerfile}"
 IMAGE_NAME="${PATCHED_GO_ANDROID_IMAGE:-neko-android-aar-go:${GO_VERSION}-boottime}"
@@ -108,6 +108,7 @@ AMNEZIAWG_GO_HOST="${AMNEZIAWG_GO_SRC:-$WORKSPACE_HOST/amneziawg-go}"
 MASTERDNSVPN_HOST="${MASTERDNSVPN_SRC:-$WORKSPACE_HOST/MasterDnsVPN-plus}"
 BYEDPI_HOST="${BYEDPI_SRC:-$WORKSPACE_HOST/byedpi}"
 UTLS_HOST="${UTLS_SRC:-$WORKSPACE_HOST/utls}"
+NETBIRD_HOST="${NETBIRD_SRC:-$WORKSPACE_HOST/netbird}"
 AAR_OUT_HOST="${AAR_OUT_DIR:-$PROJECT_ROOT/build/aar-docker}"
 GO_CACHE_HOST="${GO_CACHE_DIR:-$PROJECT_ROOT/.cache/docker-go-build}"
 GO_MOD_CACHE_HOST="${GO_MOD_CACHE_DIR:-$PROJECT_ROOT/.cache/docker-go-mod}"
@@ -149,6 +150,9 @@ DOCKER_ARGS=(
   -e "ANDROID_NDK_ROOT=/opt/android-ndk"
   -e "NDK_HOME=/opt/android-ndk"
   -e "CGO_ENABLED=${CGO_ENABLED:-1}"
+  -e "GOMAXPROCS=${GOMAXPROCS:-2}"
+  -e "GOFLAGS=${GOFLAGS:--p=2}"
+  -e "GOTOOLCHAIN=local"
   -e "GO386=${GO386:-softfloat}"
   -e "ENV_NB4A=${ENV_NB4A:-1}"
   -e "COMMIT_SING_BOX=${COMMIT_SING_BOX:-}"
@@ -185,6 +189,9 @@ fi
 if [ -d "$UTLS_HOST" ]; then
   DOCKER_ARGS+=( -v "$UTLS_HOST:/workspace/utls" )
 fi
+if [ -d "$NETBIRD_HOST" ]; then
+  DOCKER_ARGS+=( -v "$NETBIRD_HOST:/workspace/netbird" )
+fi
 
 # Preserve SSH agent for git@github.com clones used by get_source.sh.
 if [ -n "${SSH_AUTH_SOCK:-}" ] && [ -S "$SSH_AUTH_SOCK" ]; then
@@ -206,6 +213,10 @@ docker run "${DOCKER_ARGS[@]}" "$IMAGE_NAME" bash -c '
   git config --global --add safe.directory /workspace/libneko
   git config --global --add safe.directory /workspace/byedpi
   git config --global --add safe.directory /workspace/utls
+  git config --global --add safe.directory /workspace/netbird
+  git config --global --add safe.directory /workspace/amneziawg-go
+  git config --global --add safe.directory /workspace/net
+  git config --global --add safe.directory /workspace/MasterDnsVPN-plus
   bash buildScript/lib/core.sh
   mkdir -p /out
   find /workspace/project /workspace/sing-box /workspace/libneko /workspace/byedpi /workspace/utls -type f -name "*.aar" -exec cp -v {} /out/ \; 2>/dev/null || true

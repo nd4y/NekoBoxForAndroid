@@ -13,6 +13,8 @@ import io.nekohasekai.sagernet.database.ProxyEntity.Companion.TYPE_CONFIG
 import io.nekohasekai.sagernet.database.RuleEntity
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.fmt.ConfigBuildResult.IndexEntity
+import io.nekohasekai.sagernet.fmt.netbird.*
+import io.nekohasekai.sagernet.fmt.v2ray.VMessBean
 import io.nekohasekai.sagernet.fmt.hysteria.HysteriaBean
 import io.nekohasekai.sagernet.fmt.hysteria.buildSingBoxOutboundHysteriaBean
 import io.nekohasekai.sagernet.fmt.internal.ChainBean
@@ -139,8 +141,12 @@ fun buildConfig(
         val bean = proxy.requireBean() as ConfigBean
         if (bean.type == 0) {
             val tagProxy = proxy.displayName()
+            val configMap = gson.fromJson(bean.config, mutableMapOf<String, Any?>().javaClass)
+            validateNetBirdConfig(configMap, forTest = forTest)
+            if (forExport) sanitizeNetBirdConfigForExport(configMap)
+            val configText = if (forExport) gson.toJson(configMap) else bean.config
             return ConfigBuildResult(
-                if (forTest) bean.config.withUrlTestCacheFile(urlTestCacheKey) else bean.config,
+                if (forTest) configText.withUrlTestCacheFile(urlTestCacheKey) else configText,
                 listOf(),
                 proxy.id, //
                 mapOf(tagProxy to listOf(proxy)), //
@@ -153,6 +159,10 @@ fun buildConfig(
     val trafficMap = HashMap<String, List<ProxyEntity>>()
     val tagMap = HashMap<Long, String>()
     val globalOutbounds = HashMap<Long, String>()
+    var netbirdOutboundCount = 0
+    var netbirdStateDirectory: String? = null
+    var netbirdDnsTag: String? = null
+    var netbirdDnsDomains = emptyList<String>()
     val readableNames = mutableSetOf(
         TAG_DIRECT,
         TAG_BYPASS,
@@ -482,6 +492,14 @@ fun buildConfig(
             } else {
                 entity.resolveChainInternal()
             }
+            validateNetBirdChain(profileList.map {
+                when (val bean = it.requireBean()) {
+                    is NetBirdBean -> "netbird"
+                    is VMessBean -> if (bean.isVLESS) "vless" else "vmess"
+                    is ProxySetBean -> "proxy-set"
+                    else -> "other"
+                }
+            }, forTest = forTest)
             val chainTrafficSet = HashSet<ProxyEntity>().apply {
                 if (entity.type == ProxyEntity.TYPE_CHAIN || entity.type == ProxyEntity.TYPE_PROXY_SET) {
                     add(entity)
@@ -658,6 +676,20 @@ fun buildConfig(
                         is JuicityBean ->
                             buildSingBoxOutboundJuicityBean(bean)
 
+                        is NetBirdBean -> {
+                            require(++netbirdOutboundCount == 1) {
+                                "Only one NetBird outbound may run at a time. Use one chain in routing rules."
+                            }
+                            require(bean.customOutboundJson.isBlank() && bean.customConfigJson.isBlank()) {
+                                "Custom JSON is not supported for NetBird profiles."
+                            }
+                            netbirdDnsTag = tagOut
+                            netbirdDnsDomains = parseNetBirdDnsDomains(bean.dnsDomains)
+                            buildSingBoxOutboundNetBirdBean(bean, proxyEntity.id, forExport).also {
+                                netbirdStateDirectory = it.state_directory
+                            }
+                        }
+
                         is TrustTunnelBean ->
                             buildSingBoxOutboundTrustTunnelBean(bean)
 
@@ -742,11 +774,11 @@ fun buildConfig(
                     // domain_strategy
                     pastEntity?.requireBean()?.apply {
                         // don't loopback
-                        if (defaultServerDomainStrategy != "" && !serverAddress.isIpAddress()) {
+                        if (this !is NetBirdBean && defaultServerDomainStrategy != "" && !serverAddress.isIpAddress()) {
                             domainListDNSDirectForce.add("full:$serverAddress")
                         }
                     }
-                    if (bean !is ProxySetBean && bean !is MasterDnsVPNBean) {
+                    if (bean !is ProxySetBean && bean !is MasterDnsVPNBean && bean !is NetBirdBean) {
                         _hack_config_map["domain_resolver"] = buildDomainResolverConfig(
                             if (forTest) "dns-local" else "dns-direct",
                             if (forTest) "" else defaultServerDomainStrategy
@@ -1496,10 +1528,14 @@ fun buildConfig(
             }
         }
 
+        netbirdDnsTag?.let { applyNetBirdDnsRouting(dns, route, it, netbirdDnsDomains) }
+
         if (!forTest) _hack_custom_config = DataStore.globalCustomConfig
     }.let {
         val configMap = it.asMap()
         Util.mergeJSON(configMap, proxy.requireBean().customConfigJson)
+        validateNetBirdConfig(configMap, netbirdOutboundCount, forTest, netbirdStateDirectory)
+        if (forExport) sanitizeNetBirdConfigForExport(configMap)
 
         if (!forTest && isVPN && (!DataStore.appendHttpProxy && !DataStore.requireProxyInVPN)) {
             @Suppress("UNCHECKED_CAST")

@@ -1033,4 +1033,16 @@
     <string name="core_profiler_snapshot_deleted">Profiler snapshot deleted</string>
     <string name="core_profiler_failed">Profiler failed: %s</string>
     <string name="core_profiler_saving">Saving...</string>
+    <string name="action_netbird" translatable="false">NetBird</string>
+    <string name="netbird_chain_title">NetBird through VLESS</string>
+    <string name="netbird_chain_summary">Create a proxy chain with VLESS first and NetBird last. Control and relay connections use VLESS over TCP. Direct peer connections, STUN and QUIC are disabled. If VLESS fails, NetBird stays disconnected. Only one NetBird profile can run at a time. Background profile tests are disabled; test VLESS separately.</string>
+    <string name="netbird_management_url">Management server URL</string>
+    <string name="netbird_invalid_management_url">Enter an HTTPS server address without credentials, a path or query.</string>
+    <string name="netbird_setup_key">Setup key</string>
+    <string name="netbird_setup_key_summary">Required for first enrollment. After enrollment the saved device identity is used. Shared profile links and exported configurations omit this key.</string>
+    <string name="netbird_hostname">Device name</string>
+    <string name="netbird_identity_summary">IPv4 overlay. Device identity stays in private app storage and is excluded from cloud backup. A copied or imported profile enrolls as a new device. Configure routing rules for your NetBird addresses; add DNS suffixes below for internal names.</string>
+    <string name="netbird_dns_domains">NetBird DNS suffixes (optional)</string>
+    <string name="netbird_dns_domains_summary">Comma-separated internal DNS suffixes, for example example.netbird.cloud. DNS and connections for these names use NetBird. Leave blank to configure routing manually.</string>
+    <string name="netbird_invalid_dns_domains">Enter explicit DNS suffixes separated by commas, for example example.netbird.cloud.</string>
 </resources>

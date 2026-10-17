@@ -21,7 +21,8 @@ if ! go run -tags=with_gvisor ../../sing-box/cmd/internal/gvisor_workaround_veri
 fi
 
 export GOBIND=gobind
-gomobile bind -v -androidapi 23 -trimpath -ldflags='-s -w' -tags='with_conntrack,with_gvisor,with_quic,with_wireguard,with_awg,with_utls,with_clash_api' . || exit 1
+# NetBird's anet Android interface workaround uses net.zoneCache (Go 1.23+).
+gomobile bind -v -androidapi 23 -trimpath -ldflags='-s -w -linkmode=external -extldflags=-Wl,-z,max-page-size=16384 -checklinkname=0' -tags='with_conntrack,with_gvisor,with_quic,with_wireguard,with_awg,with_utls,with_clash_api' . || exit 1
 rm -r libcore-sources.jar
 
 proj=../app/libs

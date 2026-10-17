@@ -228,7 +228,19 @@ func (b *BoxInstance) Close() (err error) {
 	return b.CloseTimeout(int64(constant.FatalStopTimeout / time.Millisecond))
 }
 
+// CancelStart interrupts startup I/O without waiting for the lifecycle lock.
+// It cancels the instance lifetime and is only used when stopping the instance.
+// cancel is immutable after construction and context.CancelFunc is concurrency-safe.
+func (b *BoxInstance) CancelStart() {
+	if b.cancel != nil {
+		b.cancel()
+	}
+}
+
 func (b *BoxInstance) CloseTimeout(timeoutMillis int64) (err error) {
+	// Start holds access while dependencies enroll. Cancellation must reach
+	// them before waiting for that lock; teardown itself remains serialized.
+	b.CancelStart()
 	b.access.Lock()
 	defer b.access.Unlock()
 
@@ -247,9 +259,6 @@ func (b *BoxInstance) CloseTimeout(timeoutMillis int64) (err error) {
 	}
 
 	// close box
-	if b.cancel != nil {
-		b.cancel()
-	}
 	if b.Box != nil {
 		timeout := time.Duration(timeoutMillis) * time.Millisecond
 		if timeout <= 0 {

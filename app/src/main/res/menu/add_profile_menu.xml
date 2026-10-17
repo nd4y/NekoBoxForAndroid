@@ -97,6 +97,9 @@
                         android:id="@+id/action_new_juicity"
                         android:title="@string/action_juicity" />
                     <item
+                        android:id="@+id/action_new_netbird"
+                        android:title="@string/action_netbird" />
+                    <item
                         android:id="@+id/action_new_trusttunnel"
                         android:title="@string/action_trusttunnel" />
                     <item

@@ -44,6 +44,7 @@ import (
 	"libcore/protocol/byedpi"
 	"libcore/protocol/juicity"
 	"libcore/protocol/masterdnsvpn"
+	"libcore/protocol/netbird"
 	"libcore/protocol/trusttunnel"
 
 	_ "github.com/sagernet/sing-box/experimental/clashapi"
@@ -95,6 +96,7 @@ func nekoboxAndroidOutboundRegistry() *outbound.Registry {
 	byedpi.RegisterOutbound(registry)
 	juicity.RegisterOutbound(registry)
 	masterdnsvpn.RegisterOutbound(registry)
+	netbird.RegisterOutbound(registry)
 	trusttunnel.RegisterOutbound(registry)
 	registerNaiveOutbound(registry)
 
@@ -122,6 +124,7 @@ func nekoboxAndroidDNSTransportRegistry(localTransport LocalDNSTransport) *dns.T
 	hosts.RegisterTransport(registry)
 	// local.RegisterTransport(registry)
 	fakeip.RegisterTransport(registry)
+	netbird.RegisterDNSTransport(registry)
 
 	quic.RegisterTransport(registry)
 	quic.RegisterHTTP3Transport(registry)

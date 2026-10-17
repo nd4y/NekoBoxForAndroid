@@ -991,4 +991,15 @@
     <string name="tls_record_fragment">Фрагментация TLS с упаковкой в TLS-записи</string>
     <string name="mutual_tls">Взаимный TLS (mTLS)</string>
     <string name="language">Язык</string>
+    <string name="netbird_chain_title">NetBird через VLESS</string>
+    <string name="netbird_chain_summary">Создайте цепочку: сначала VLESS, затем NetBird. Управление и relay работают через VLESS по TCP. Прямые соединения с узлами, STUN и QUIC отключены. При отказе VLESS NetBird остаётся без соединения. Одновременно доступен один профиль NetBird. Фоновые тесты профиля отключены; проверяйте VLESS отдельно.</string>
+    <string name="netbird_management_url">URL сервера управления</string>
+    <string name="netbird_invalid_management_url">Укажите HTTPS-адрес сервера без учётных данных, пути и параметров запроса.</string>
+    <string name="netbird_setup_key">Ключ регистрации (setup key)</string>
+    <string name="netbird_setup_key_summary">Нужен для первой регистрации. Затем используется сохранённая идентичность устройства. Ссылки на профиль и экспорт конфигурации не содержат этот ключ.</string>
+    <string name="netbird_hostname">Имя устройства</string>
+    <string name="netbird_identity_summary">Внутренняя сеть работает по IPv4. Идентичность хранится в закрытом каталоге приложения без облачного резервирования. Копия или импорт профиля регистрируется как новое устройство. Добавьте правила маршрутизации для адресов NetBird; для внутренних имён укажите DNS-суффиксы ниже.</string>
+    <string name="netbird_dns_domains">DNS-суффиксы NetBird (необязательно)</string>
+    <string name="netbird_dns_domains_summary">Внутренние DNS-суффиксы через запятую, например example.netbird.cloud. Запросы DNS и соединения для этих имён направляются в NetBird. Оставьте пустым для ручной настройки правил.</string>
+    <string name="netbird_invalid_dns_domains">Укажите DNS-суффиксы через запятую, например example.netbird.cloud.</string>
 </resources>

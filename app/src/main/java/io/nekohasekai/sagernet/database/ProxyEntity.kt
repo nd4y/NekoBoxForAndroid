@@ -7,6 +7,7 @@ import com.esotericsoftware.kryo.io.ByteBufferInput
 import com.esotericsoftware.kryo.io.ByteBufferOutput
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.fmt.*
+import io.nekohasekai.sagernet.fmt.netbird.NetBirdBean
 import io.nekohasekai.sagernet.fmt.http.HttpBean
 import io.nekohasekai.sagernet.fmt.http.toUri
 import io.nekohasekai.sagernet.fmt.hysteria.*
@@ -91,6 +92,7 @@ data class ProxyEntity(
     var shadowTLSBean: ShadowTLSBean? = null,
     var anyTLSBean: AnyTLSBean? = null,
     var trustTunnelBean: TrustTunnelBean? = null,
+    var netbirdBean: NetBirdBean? = null,
     var proxySetBean: ProxySetBean? = null,
     var chainBean: ChainBean? = null,
     var nekoBean: NekoBean? = null,
@@ -122,6 +124,7 @@ data class ProxyEntity(
         const val TYPE_MASTERDNSVPN = 27
         const val TYPE_BYEDPI = 28
         const val TYPE_TRUST_TUNNEL = 29
+        const val TYPE_NETBIRD = 30
 
         const val TYPE_CONFIG = 998
         const val TYPE_NEKO = 999
@@ -213,6 +216,7 @@ data class ProxyEntity(
             TYPE_SHADOWTLS -> shadowTLSBean = KryoConverters.shadowTLSDeserialize(byteArray)
             TYPE_ANYTLS -> anyTLSBean = KryoConverters.anyTLSDeserialize(byteArray)
             TYPE_TRUST_TUNNEL -> trustTunnelBean = KryoConverters.trustTunnelDeserialize(byteArray)
+            TYPE_NETBIRD -> netbirdBean = KryoConverters.netbirdDeserialize(byteArray)
             TYPE_PROXY_SET -> proxySetBean = KryoConverters.proxySetDeserialize(byteArray)
             TYPE_CHAIN -> chainBean = KryoConverters.chainDeserialize(byteArray)
             TYPE_NEKO -> nekoBean = KryoConverters.nekoDeserialize(byteArray)
@@ -242,6 +246,7 @@ data class ProxyEntity(
         TYPE_SHADOWTLS -> "ShadowTLS"
         TYPE_ANYTLS -> "AnyTLS"
         TYPE_TRUST_TUNNEL -> "TrustTunnel"
+        TYPE_NETBIRD -> "NetBird"
         TYPE_PROXY_SET -> proxySetBean!!.displayType()
         TYPE_CHAIN -> chainName
         TYPE_NEKO -> nekoBean!!.displayType()
@@ -275,6 +280,7 @@ data class ProxyEntity(
             TYPE_SHADOWTLS -> shadowTLSBean
             TYPE_ANYTLS -> anyTLSBean
             TYPE_TRUST_TUNNEL -> trustTunnelBean
+            TYPE_NETBIRD -> netbirdBean
             TYPE_PROXY_SET -> proxySetBean
             TYPE_CHAIN -> chainBean
             TYPE_NEKO -> nekoBean
@@ -293,6 +299,7 @@ data class ProxyEntity(
 
     fun haveStandardLink(): Boolean {
         return when (requireBean()) {
+            is NetBirdBean -> false
             is SSHBean -> false
             is WireGuardBean -> false
             is AmneziaWGBean -> false
@@ -537,6 +544,7 @@ data class ProxyEntity(
         shadowTLSBean = null
         anyTLSBean = null
         trustTunnelBean = null
+        netbirdBean = null
         proxySetBean = null
         chainBean = null
         configBean = null
@@ -643,6 +651,11 @@ data class ProxyEntity(
                 anyTLSBean = bean
             }
 
+            is NetBirdBean -> {
+                type = TYPE_NETBIRD
+                netbirdBean = bean
+            }
+
             is TrustTunnelBean -> {
                 type = TYPE_TRUST_TUNNEL
                 trustTunnelBean = bean
@@ -697,6 +710,7 @@ data class ProxyEntity(
                 TYPE_SHADOWTLS -> ShadowTLSSettingsActivity::class.java
                 TYPE_ANYTLS -> AnyTLSSettingsActivity::class.java
                 TYPE_TRUST_TUNNEL -> TrustTunnelSettingsActivity::class.java
+                TYPE_NETBIRD -> NetBirdSettingsActivity::class.java
                 TYPE_PROXY_SET -> ProxySetSettingsActivity::class.java
                 TYPE_CHAIN -> ChainSettingsActivity::class.java
                 TYPE_CONFIG -> ConfigSettingActivity::class.java

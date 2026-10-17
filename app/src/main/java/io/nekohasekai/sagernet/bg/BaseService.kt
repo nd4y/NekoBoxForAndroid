@@ -377,7 +377,11 @@ class BaseService {
                 val currentJob = currentCoroutineContext()[Job]
                 val connectingJob = data.connectingJob
                 if (connectingJob != null && connectingJob != currentJob) {
-                    connectingJob.cancelAndJoin() // ensure stop connecting first
+                    cancelConnectingJob(connectingJob) {
+                        data.proxy?.takeIf { it.isInitialized() }?.let { proxy ->
+                            runCatching { proxy.box.cancelStart() }.onFailure { Logs.w(it) }
+                        }
+                    }
                 }
 
                 data.lifecycleMutex.withLock {
@@ -572,6 +576,8 @@ class BaseService {
                         SagerNet.application.nativeInterface.unregisterWifiStateListener()
                         preInit()
                         proxy.init()
+                        // Stop may have arrived before init assigned the native box.
+                        currentCoroutineContext().ensureActive()
                         if (hasActiveWifiRules) {
                             SagerNet.application.nativeInterface.registerWifiStateListener()
                             SagerNet.application.nativeInterface.notifyWifiStateChanged("post-init")
@@ -583,7 +589,9 @@ class BaseService {
                             stopRunner(false, it.readableMessage)
                         }
 
+                        currentCoroutineContext().ensureActive()
                         startProcesses()
+                        currentCoroutineContext().ensureActive()
                         if (DataStore.enableCoreProfiling) {
                             Libcore.startCoreProfiling()
                         }
@@ -597,8 +605,10 @@ class BaseService {
                         }
                     } catch (_: CancellationException) { // if the job was cancelled, it is canceller's responsibility to call stopRunner
                     } catch (_: UnknownHostException) {
+                        currentCoroutineContext().ensureActive()
                         stopRunner(false, getString(R.string.invalid_server))
                     } catch (e: PluginManager.PluginNotFoundException) {
+                        currentCoroutineContext().ensureActive()
                         withContext(Dispatchers.Main.immediate) {
                             Toast.makeText(this@Interface, e.readableMessage, Toast.LENGTH_SHORT).show()
                         }
@@ -606,6 +616,8 @@ class BaseService {
                         data.binder.missingPlugin(e.plugin)
                         stopRunner(false, null)
                     } catch (exc: Throwable) {
+                        // Go reports canceled startup as a native error, not CancellationException.
+                        currentCoroutineContext().ensureActive()
                         if (exc.readableMessage.contains("no working DNS resolvers found", ignoreCase = true)) {
                             withContext(Dispatchers.Main.immediate) {
                                 Toast.makeText(

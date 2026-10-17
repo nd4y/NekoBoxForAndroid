@@ -1,16 +1,19 @@
 # syntax=docker/dockerfile:1.7
 
 ARG DEBIAN_VERSION=bookworm
-ARG BOOTSTRAP_GO_VERSION=1.25.10
+ARG BOOTSTRAP_GO_VERSION=1.26.7
 
 FROM debian:${DEBIAN_VERSION} AS go-builder
 
 ARG TARGETARCH
-ARG GO_VERSION=1.25.10
-ARG BOOTSTRAP_GO_VERSION=1.25.10
+ARG GO_VERSION=1.26.7
+ARG BOOTSTRAP_GO_VERSION=1.26.7
 ARG GO_PATCH_FILE=goruntime-boottime-over-monotonic.diff
+ARG GO_BUILD_MAXPROCS=2
 
 ENV GO_VERSION=${GO_VERSION} \
+    GOMAXPROCS=${GO_BUILD_MAXPROCS} \
+    GOFLAGS=-p=2 \
     BOOTSTRAP_GO_VERSION=${BOOTSTRAP_GO_VERSION} \
     GOROOT_BOOTSTRAP=/usr/local/go-bootstrap \
     GOROOT=/usr/local/go \
@@ -38,6 +41,7 @@ COPY ${GO_PATCH_FILE} /tmp/go.patch
 RUN set -eux; \
     curl -fsSL "https://go.dev/dl/go${GO_VERSION}.src.tar.gz" -o /tmp/go-src.tar.gz; \
     tar -C /tmp/go-src --strip-components=1 -xzf /tmp/go-src.tar.gz; \
+    sed -i 's/\r$//' /tmp/go.patch; \
     patch -p1 < /tmp/go.patch; \
     cd src; \
     ./make.bash; \
@@ -48,7 +52,7 @@ RUN set -eux; \
 
 FROM debian:${DEBIAN_VERSION}
 
-ARG GO_VERSION=1.25.10
+ARG GO_VERSION=1.26.7
 ARG ANDROID_CMDLINE_TOOLS_VERSION=11076708
 
 ENV GO_VERSION=${GO_VERSION} \
