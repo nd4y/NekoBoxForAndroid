@@ -147,15 +147,49 @@ the connection mutex, removing the concurrent-reconnect race reproduced before
 the fix. Dedicated first-packet, bounded-failure and concurrent-reconnect tests
 cover this behavior.
 
+## HTTP/2 retry panic and native crash evidence
+
+Android recorded a native Go panic in APK58 after3386seconds of process uptime.
+The exact matching ELF and tombstone contain an HTTP/2 `getClientConn` return
+address immediately after `shouldRetryDial`. The original Go panic text was
+lost before collection, so the identity of that historical failure remains
+unproven. It must not be declared resolved merely from a Connected state.
+
+The local HTTP/2 fork has the unsafe context-interface comparison reported in
+[Go issue70535](https://github.com/golang/go/issues/70535). A new regression
+reproduces its panic with valid contexts containing slices, including nested
+interface wrappers. Retry decisions now check the requesting context's
+cancellation instead of comparing context values. Canceled callers stop,
+another live caller can retry a canceled shared dial, and permanent network
+errors do not gain a retry. The eight-case regression passes100repetitions;
+Linux race checks pass20repetitions, and cancellation/retry/dial tests pass.
+
+The application also installs `debug.SetCrashOutput` for each Go runtime in
+separate private BG/main files. A normal restart preserves the last crash;
+turning off core logs or truncating the cache log does not remove it. The
+ADB API and `nekoctl logs` expose `crash-native-bg` and `crash-native-main`.
+Native reads start at the panic, then continue through bounded cursor reads.
+Diagnostic bundles collect the sources advertised by the APK, including both
+native sources on new versions. Subprocess tests verify original panic/frame
+capture, descriptor ownership, rotation across crashes and normal restarts,
+and separation of main/background evidence. These pass on Windows (five
+repetitions), Linux with race detection (three), and the physical Android
+device (three), without deliberately crashing the installed VPN application.
+Arbitrary C/JNI faults and OS kills still require Android exit/tombstone data.
+
 ## Physical acceptance
 
-Current checkpoint: APK1.4.2-58/code275 was installed successfully over the
-previously paired wireless ADB connection after USB disappeared. The VPN start
-request was accepted, then wireless ADB also became unavailable before post-install
-snapshot/testing. Final cold LTE, repeated/rapid transitions and idle-first-packet
-acceptance are pending reconnection. Earlier passing phases on older cores are
-not acceptance of APK58. Debug logging is temporarily3; original0 still needs
-restoring on the phone. No network toggle was issued over wireless ADB.
+USB reconnection confirmed the installed APK58 hash and native version. Cold
+restricted LTE passed; after85seconds without test traffic, the first unique
+home DNS query passed in180ms. Original logLevel0 was restored through a fresh
+full-document dry-run/CAS import and process restart. A quiet cold start, three
+complete Wi-Fi/LTE/Wi-Fi cycles and three rapid cycles passed all DNS/HTTPS
+checks with one background PID. Twelve more cycles under two concurrent traffic
+workers retained the process:243of258HTTPS requests returned200, with15transient
+errors during handover; all DNS/HTTPS passed after the network stabilized.
+The historical native panic above means those short checks do not establish
+long-term stability. APK60 adds the reproduced HTTP/2 correction and persistent
+panic capture; its final physical acceptance is pending build/deployment.
 
 
 Final observations and exact artifact/source hashes are recorded in the

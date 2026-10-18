@@ -120,7 +120,7 @@ def parser():
     for command in ("status", "capabilities", "checkpoints", "profiles", "groups", "rules", "settings"):
         sub.add_parser(command)
     logs = sub.add_parser("logs", help="Read bounded app logs (redacted by default)")
-    logs.add_argument("--source", choices=("core", "previous", "events", "crash-bg", "crash-main"), default="core")
+    logs.add_argument("--source", choices=("core", "previous", "events", "crash-bg", "crash-main", "crash-native-bg", "crash-native-main"), default="core")
     logs.add_argument("--max-bytes", type=int, default=65536)
     logs.add_argument("--cursor")
     logs.add_argument("--follow", action="store_true", help="Stream incremental JSON envelopes; Ctrl+C to stop")

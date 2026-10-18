@@ -26,6 +26,32 @@ def fake_system(client, args, **kwargs):
     return 'Exception: example failure\nAuthorization: Bearer hidden-credential\n at Test.call(Test.kt:20)', None
 
 class DiagnosticTests(unittest.TestCase):
+    @patch('neko_diagnostics.system_read', side_effect=fake_system)
+    def test_native_crash_sources_follow_capabilities_and_keep_old_apps_compatible(self, _read):
+        for supported in (False, True):
+            with self.subTest(supported=supported), tempfile.TemporaryDirectory() as d:
+                client = FakeClient()
+                original = client.request
+                def request(method, params=None):
+                    result = original(method, params)
+                    if method == 'capabilities':
+                        result['result']['logSources'] = ['crash-native-bg', 'crash-native-main'] if supported else []
+                    return result
+                client.request = request
+                f = Path(d) / 'bundle.zip'
+                self.assertTrue(collect_bundle(client, f)['complete'])
+                with zipfile.ZipFile(f) as z:
+                    for source in ('crash-native-bg', 'crash-native-main'):
+                        self.assertEqual(supported, 'logs/' + source + '.json' in z.namelist())
+
+    @patch('nekoctl.Client.request', return_value={'apiVersion': 1, 'ok': True, 'result': {'text': 'panic: test'}})
+    def test_native_crash_cli_uses_redacted_log_api(self, request):
+        with redirect_stdout(StringIO()):
+            self.assertEqual(0, nekoctl.main(['--serial', 'known', 'logs', '--source', 'crash-native-bg']))
+        self.assertEqual('logs.read', request.call_args.args[0])
+        self.assertEqual('crash-native-bg', request.call_args.args[1]['source'])
+        self.assertFalse(request.call_args.args[1]['includeSecrets'])
+
     def test_redaction_removes_multiline_credentials_but_retains_stack(self):
         text = redact_text('password="test-secret"\nhttps://example.test/?token=abc\nAuthorization: Bearer auth-secret\n at Test.call(Test.kt:9)')
         for secret in ('test-secret', 'example.test', 'auth-secret'): self.assertNotIn(secret, text)

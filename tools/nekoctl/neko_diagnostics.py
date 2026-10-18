@@ -90,11 +90,14 @@ def collect_bundle(client, destination, include_secrets=False, logcat_lines=1000
         # so a blocked database cannot hide the Java stacks needed to diagnose that blockage.
         api('snapshot.json', 'diagnostics.snapshot')
         before = api('status-before.json', 'status')
-        api('capabilities.json', 'capabilities')
+        capabilities = api('capabilities.json', 'capabilities')
         api('config.json', 'config.export', {'full': True, 'includeSecrets': include_secrets})
         api('generated.json', 'config.render', {'includeSecrets': include_secrets})
         for source in ('core', 'previous', 'events', 'crash-bg', 'crash-main'):
             api('logs/' + source + '.json', 'logs.read', {'source': source, 'maxBytes': 131072, 'includeSecrets': include_secrets})
+        for source in ('crash-native-bg', 'crash-native-main'):
+            if source in (capabilities or {}).get('logSources', []):
+                api('logs/' + source + '.json', 'logs.read', {'source': source, 'maxBytes': 131072, 'includeSecrets': include_secrets})
         after = api('status-after.json', 'status')
     finally:
         client.timeout = original_timeout

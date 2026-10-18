@@ -81,6 +81,9 @@ func InitCore(process, cachePath, internalAssets, externalAssets string,
 	protectPath = filepath.Join(tmp, "protect_path")
 	workingPath = tmp
 	tempPath = cachePath
+	if err := setupNativeCrashOutput(workingPath, isBgProcess); err != nil {
+		log.Printf("native crash output unavailable: %v", err)
+	}
 
 	// sing-box fs
 	resourcePaths = append(resourcePaths, externalAssets)

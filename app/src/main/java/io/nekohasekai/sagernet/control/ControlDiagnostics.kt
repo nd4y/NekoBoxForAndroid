@@ -16,7 +16,8 @@ object ControlDiagnostics {
     private val directory
         get() = File(SagerNet.application.noBackupFilesDir, "diagnostics").apply { mkdirs() }
 
-    val sources = listOf("core", "previous", "events", "crash-bg", "crash-main")
+    val sources =
+        listOf("core", "previous", "events", "crash-bg", "crash-main", "crash-native-bg", "crash-native-main")
 
     private fun file(source: String) =
         when (source) {
@@ -25,6 +26,10 @@ object ControlDiagnostics {
             "events" -> File(directory, "events.log")
             "crash-bg",
             "crash-main" -> File(directory, "$source.log")
+            "crash-native-bg",
+            "crash-native-main" -> File(directory, "$source.log").let {
+                if (it.length() > 0) it else File(it.path + ".previous")
+            }
             else -> throw ControlError("INVALID_FIELD", "Unknown log source")
         }
 
@@ -108,7 +113,10 @@ object ControlDiagnostics {
         if (params.has("includeSecrets"))
             ControlTypes.check(params["includeSecrets"], Boolean::class.java)
         val cursor = if (params.has("cursor")) ControlJson.string(params, "cursor") else null
-        val result = DiagnosticTail.read(file(source), cursor, maxBytes)
+        // Keep the panic and crashing goroutine at the beginning of a large native
+        // dump. Subsequent cursor reads still retrieve the remaining frames.
+        val result =
+            DiagnosticTail.read(file(source), cursor, maxBytes, source.startsWith("crash-native-"))
         val raw = params["includeSecrets"]?.asBoolean == true
         return ControlJson.objectOf(
             "source" to source,

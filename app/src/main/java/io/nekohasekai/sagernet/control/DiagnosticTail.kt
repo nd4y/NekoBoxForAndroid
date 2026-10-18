@@ -24,7 +24,7 @@ internal object DiagnosticTail {
         return bytes.copyOf(count)
     }
 
-    fun read(file: File, cursor: String?, maxBytes: Int): Result {
+    fun read(file: File, cursor: String?, maxBytes: Int, fromStart: Boolean = false): Result {
         require(maxBytes in 256..262144)
         if (!file.exists()) return Result("", "", cursor != null, false)
         return RandomAccessFile(file, "r").use { input ->
@@ -38,7 +38,7 @@ internal object DiagnosticTail {
             val offset = parts?.getOrNull(1)?.toLongOrNull()
             val valid =
                 parts?.size == 2 && parts[0] == generation && offset != null && offset in 0..size
-            val start = if (valid) offset!! else maxOf(0, size - maxBytes)
+            val start = if (valid) offset!! else if (fromStart) 0 else maxOf(0, size - maxBytes)
             input.seek(start)
             val bytes = readAvailable(input, minOf(size - start, maxBytes.toLong()).toInt())
             var end = bytes.size

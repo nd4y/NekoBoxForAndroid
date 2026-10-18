@@ -6,6 +6,26 @@ import org.junit.Test
 
 class DiagnosticTailTest {
     @Test
+    fun nativeCrashStartsWithThePanicAndCursorsContinueAfterRotation() {
+        val f = Files.createTempFile("neko-native-crash", ".txt").toFile()
+        try {
+            f.writeText("panic: original failure\n" + "frame\n".repeat(200))
+            val first = DiagnosticTail.read(f, null, 256, fromStart = true)
+            assertTrue(first.text.startsWith("panic: original failure\n"))
+            assertTrue(first.truncated)
+            val next = DiagnosticTail.read(f, first.cursor, 256, fromStart = true)
+            assertFalse(next.reset)
+            assertFalse(next.text.contains("panic:"))
+            f.writeText("panic: new failure\n" + "new frame\n".repeat(200))
+            val rotated = DiagnosticTail.read(f, next.cursor, 256, fromStart = true)
+            assertTrue(rotated.reset)
+            assertTrue(rotated.text.startsWith("panic: new failure\n"))
+        } finally {
+            f.delete()
+        }
+    }
+
+    @Test
     fun cursorReadsOnlyNewBytesAndResetsAfterRotation() {
         val f = Files.createTempFile("neko-log", ".txt").toFile()
         try {
