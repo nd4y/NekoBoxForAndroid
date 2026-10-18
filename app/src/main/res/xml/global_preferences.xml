@@ -449,6 +449,12 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/cag_misc">
+
+        <moe.matsuri.nb4a.ui.MaterialSwitchPreference
+            app:key="adbControlEnabled"
+            app:defaultValue="false"
+            app:title="@string/adb_control_title"
+            app:summary="@string/adb_control_summary" />
         <EditTextPreference
             app:defaultValue="https://api.ip2location.io"
             app:icon="@drawable/ic_baseline_cast_connected_24"

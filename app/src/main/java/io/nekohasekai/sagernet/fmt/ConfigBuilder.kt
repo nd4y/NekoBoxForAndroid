@@ -1249,6 +1249,11 @@ fun buildConfig(
                             "proxy" -> mainProxyTag
                             else -> TAG_BLOCK
                         }
+                        // Block is a rule action in the current core, not a declared outbound.
+                        if (outbound == TAG_BLOCK) {
+                            outbound = null
+                            action = "reject"
+                        }
                     }
                 } else null
 

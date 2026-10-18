@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.database
 
+import io.nekohasekai.sagernet.control.ControlAccess
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
@@ -231,9 +232,9 @@ abstract class SagerDatabase : RoomDatabase() {
                 .build()
         }
 
-        val groupDao get() = instance.groupDao()
-        val proxyDao get() = instance.proxyDao()
-        val rulesDao get() = instance.rulesDao()
+        val groupDao by lazy { ControlAccess.wrap(ProxyGroup.Dao::class.java, instance.groupDao(), "groups") }
+        val proxyDao by lazy { ControlAccess.wrap(ProxyEntity.Dao::class.java, instance.proxyDao(), "profiles") }
+        val rulesDao by lazy { ControlAccess.wrap(RuleEntity.Dao::class.java, instance.rulesDao(), "rules") }
 
     }
 

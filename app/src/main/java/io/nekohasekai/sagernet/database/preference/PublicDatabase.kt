@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.database.preference
 
+import io.nekohasekai.sagernet.control.ControlAccess
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -24,7 +25,7 @@ abstract class PublicDatabase : RoomDatabase() {
                 .build()
         }
 
-        val kvPairDao get() = instance.keyValuePairDao()
+        val kvPairDao by lazy { ControlAccess.wrap(KeyValuePair.Dao::class.java, instance.keyValuePairDao(), "preferences") }
     }
 
     abstract fun keyValuePairDao(): KeyValuePair.Dao
