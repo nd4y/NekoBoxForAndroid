@@ -43,6 +43,25 @@ Device authorization and runtime state remain local: `adbControlEnabled`, last-r
 
 `render --profile ID` returns the generated native configuration without starting it; its default output is redacted. Use `--include-secrets` and a private `--output` file for local diagnostics. Rendering does not establish remote connections or guarantee runtime success.
 
+## Logs and diagnostic bundles
+
+```powershell
+python tools/nekoctl/nekoctl.py --serial DEVICE logs --source core
+python tools/nekoctl/nekoctl.py --serial DEVICE logs --source events --follow
+python tools/nekoctl/nekoctl.py --serial DEVICE --output crash.json logs --source crash-bg
+python tools/nekoctl/nekoctl.py --serial DEVICE diagnostics PRIVATE-PATH/bundle.zip
+```
+
+`logs` returns a JSON envelope; `--follow` streams JSON lines until Ctrl+C. Sources: `core` (current native/app log), `previous` (bounded core tail preserved before background-process initialization truncates the cache log), `events` (bounded service/network journal), `crash-bg`, and `crash-main` (last persisted Java exception for each process). Crash and event recording works even when the core log level is off. An empty core source with `coreLoggingEnabled:false` means logging is disabled. Logs are never cleared by these commands.
+
+`--max-bytes` is 256..262144, default65536; `--cursor` resumes from the raw byte offset returned by a previous read. Follow automatically carries the cursor. Rotation/truncation resets are explicit; cursors are best effort across concurrent rotation, not an exactly-once delivery guarantee. UTF-8 code points are retained across chunk boundaries. `--interval` is 0.2..60seconds, default2. Optional `--output` creates a NEW UTF-8 JSON/JSONL file. Secrets are masked by default using known stored credentials and conservative text patterns; `--include-secrets` explicitly requests raw app log text.
+
+`diagnostics FILE` (alias `bundle`) creates a NEW ZIP containing a manifest with per-file hashes/errors, status before/after, capabilities, full redacted config, generated config, app/core versions, app/native memory, current Java and bounded Go goroutine stacks (argument values omitted), current underlying-network metadata, recent process exit reasons, all five log sources, package-scoped `dumpsys` exit/memory data and UID-filtered Android logcat. `--logcat-lines` defaults1000, max5000. No global logcat, network toggles, configuration changes, log clearing or VPN restart are performed. `--include-secrets` explicitly includes complete unredacted config and raw log text. Default OS text masking is best effort: routing addresses and other private details can remain, so keep every bundle in private local storage. No peer identity or private database files are collected.
+
+Unavailable components are recorded in the manifest; a complete ZIP with `complete:false` is a successful partial collection. On the first transport failure, remaining provider calls are skipped, preserving scoped OS evidence without repeatedly waiting on a hung provider. Older APKs may support status/config but lack log/snapshot methods. Missing/disabled core logs cannot reconstruct old crashes. The Android exit API is available fromAPI30; native tombstone protobufs and historical ANR trace files are not exported by this first version. See [Android ApplicationExitInfo](https://developer.android.com/reference/android/app/ApplicationExitInfo).
+
+Wire methods: `logs.read {source?,maxBytes?,cursor?,includeSecrets?}` and `diagnostics.snapshot {}`. The existing opt-in and shell-UID authorization apply to both. Snapshot records exclude exception messages and thread-local values; log text masking cannot guarantee anonymity for arbitrary third-party output.
+
 ## Editing configuration
 
 A patch is an object containing an ordered `operations` array. The maximum is 256 operations and 1 MiB per request. IDs are positive integers and remain stable. Omitted properties retain their values, including passwords; an explicit empty string clears a string. Unknown fields, nulls, wrong types and integer overflow are rejected. `capabilities` reports supported setting names/types and protocol field templates. Integer-valued Android preferences use JSON strings, for example `"mtu":"1400"`.

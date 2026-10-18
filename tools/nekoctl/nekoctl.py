@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import sys
 import uuid
+import time
+from neko_diagnostics import collect_bundle
 
 
 class TransportError(Exception):
@@ -21,6 +23,7 @@ class Client:
             raise TransportError("Select a device explicitly with --serial or ANDROID_SERIAL")
         if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+", package):
             raise TransportError("Invalid Android package name")
+        self.package = package
         self.prefix = [adb, "-s", serial]
         self.authority = "content://" + package + ".control"
         self.timeout = timeout
@@ -116,6 +119,17 @@ def parser():
     sub = root.add_subparsers(dest="command", required=True)
     for command in ("status", "capabilities", "checkpoints", "profiles", "groups", "rules", "settings"):
         sub.add_parser(command)
+    logs = sub.add_parser("logs", help="Read bounded app logs (redacted by default)")
+    logs.add_argument("--source", choices=("core", "previous", "events", "crash-bg", "crash-main"), default="core")
+    logs.add_argument("--max-bytes", type=int, default=65536)
+    logs.add_argument("--cursor")
+    logs.add_argument("--follow", action="store_true", help="Stream incremental JSON envelopes; Ctrl+C to stop")
+    logs.add_argument("--interval", type=float, default=2.0)
+    logs.add_argument("--include-secrets", action="store_true")
+    diagnostic = sub.add_parser("diagnostics", aliases=["bundle"], help="Collect a private read-only diagnostic ZIP, including partial results")
+    diagnostic.add_argument("file")
+    diagnostic.add_argument("--include-secrets", action="store_true")
+    diagnostic.add_argument("--logcat-lines", type=int, default=1000)
     export = sub.add_parser("export", help="Export configuration, secrets redacted unless explicitly requested")
     export.add_argument("--include-secrets", action="store_true")
     export.add_argument("--full", action="store_true", help="Versioned complete editable document, including every persistent preference")
@@ -151,6 +165,46 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         client = Client(args.serial, args.package, args.adb, args.timeout)
+        if args.command in ("diagnostics", "bundle"):
+            if args.output:
+                raise TransportError("Use the diagnostics file argument instead of --output")
+            if not 1 <= args.logcat_lines <= 5000:
+                raise TransportError("logcat-lines must be 1..5000")
+            result = collect_bundle(client, args.file, args.include_secrets, args.logcat_lines)
+            sys.stdout.write(json.dumps({"ok": True, "result": result}, ensure_ascii=False) + "\n")
+            return 0
+        if args.command == "logs":
+            if not 256 <= args.max_bytes <= 262144 or not 0.2 <= args.interval <= 60:
+                raise TransportError("max-bytes must be 256..262144 and interval 0.2..60 seconds")
+            params = {"source": args.source, "maxBytes": args.max_bytes, "includeSecrets": args.include_secrets}
+            if args.cursor is not None:
+                params["cursor"] = args.cursor
+            if args.follow:
+                output = None
+                try:
+                    if args.output:
+                        fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                        output = os.fdopen(fd, "w", encoding="utf-8", newline="\n")
+                    while True:
+                        response = client.request("logs.read", params)
+                        stream = output or sys.stdout
+                        stream.write(json.dumps(response, ensure_ascii=False) + "\n"); stream.flush()
+                        if not response["ok"]:
+                            return 2
+                        params["cursor"] = response["result"]["cursor"]
+                        time.sleep(args.interval)
+                except KeyboardInterrupt:
+                    return 0
+                finally:
+                    if output: output.close()
+            response = client.request("logs.read", params)
+            data = json.dumps(response, ensure_ascii=False, indent=2) + "\n"
+            if args.output:
+                fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as output: output.write(data)
+            else:
+                sys.stdout.write(data)
+            return 0 if response["ok"] else 2
         params = {}
         method = args.command
         collection = method if method in ("profiles", "groups", "rules", "settings") else None

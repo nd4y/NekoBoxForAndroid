@@ -44,10 +44,15 @@ object ControlApi {
                     "secretExports" to true,
                     "fullConfigSchema" to ControlFullConfig.SCHEMA,
                     "fullConfigSchemaVersion" to 1,
+                    "diagnosticsSchema" to "nekobox.diagnostics",
+                    "logSources" to ControlDiagnostics.sources,
+                    "maxLogReadBytes" to 262144,
                     "methods" to
                         listOf(
                             "capabilities",
                             "status",
+                            "logs.read",
+                            "diagnostics.snapshot",
                             "config.export",
                             "config.import",
                             "config.render",
@@ -64,6 +69,11 @@ object ControlApi {
                     "validation" to
                         listOf("typed-fields", "references", "generated-config", "native-options"),
                 )
+            }
+            "logs.read" -> return ControlDiagnostics.read(p)
+            "diagnostics.snapshot" -> {
+                ControlJson.keys(p, emptySet())
+                return ControlDiagnostics.snapshot()
             }
             "status" -> {
                 ControlJson.keys(p, emptySet())

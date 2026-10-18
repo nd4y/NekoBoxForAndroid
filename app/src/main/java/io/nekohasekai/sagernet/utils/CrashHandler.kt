@@ -22,6 +22,7 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
 
     @Suppress("UNNECESSARY_SAFE_CALL")
     override fun uncaughtException(thread: Thread, throwable: Throwable) {
+        io.nekohasekai.sagernet.control.ControlDiagnostics.crash(thread, throwable)
         // note: libc / go panic is in android log
 
         try {

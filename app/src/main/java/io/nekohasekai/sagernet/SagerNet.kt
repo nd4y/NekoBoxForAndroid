@@ -63,6 +63,7 @@ class SagerNet : Application(),
         if (isMainProcess || isBgProcess) {
             externalAssets.mkdirs()
             Seq.setContext(this)
+            io.nekohasekai.sagernet.control.ControlDiagnostics.processStart(isBgProcess)
             Libcore.initCore(
                 process,
                 cacheDir.absolutePath + "/",
@@ -223,7 +224,7 @@ class SagerNet : Application(),
         fun stopService() =
             application.sendBroadcast(Intent(Action.CLOSE).setPackage(application.packageName))
 
-        var underlyingNetwork: Network? = null
+        @Volatile var underlyingNetwork: Network? = null
 
         var appVersionNameForDisplay = {
             var n = BuildConfig.VERSION_NAME

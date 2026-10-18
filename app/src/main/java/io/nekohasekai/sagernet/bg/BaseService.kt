@@ -91,6 +91,7 @@ class BaseService {
 
         fun changeState(s: State, msg: String? = null) {
             if (state == s && msg == null) return
+            io.nekohasekai.sagernet.control.ControlDiagnostics.event("service.state", mapOf("from" to state.name, "to" to s.name))
             state = s
             DataStore.serviceState = s
             binder.stateChanged(s, msg)
@@ -459,11 +460,22 @@ class BaseService {
                 val link = network?.let { current -> SagerNet.connectivity.getLinkProperties(current) }
                 val currentName = link?.interfaceName
                 upstreamInterfaceName = currentName
+                val caps = network?.let { SagerNet.connectivity.getNetworkCapabilities(it) }
+                val transport = when {
+                    caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true -> "wifi"
+                    caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "cellular"
+                    else -> "other"
+                }
+                io.nekohasekai.sagernet.control.ControlDiagnostics.event(
+                    "network.update",
+                    mapOf("interface" to currentName, "network" to network?.networkHandle, "transport" to transport),
+                )
                 val decision = networkChangeRecoveryPolicy.onNetworkChanged(
                     interfaceName = currentName,
                     isVpnNetwork = isVpnNetwork(network),
                     reconnectEnabled = DataStore.networkChangeReconnect,
                     resetEnabled = DataStore.networkChangeResetConnections,
+                    networkHandle = network?.networkHandle,
                 )
                 if (decision.reconnect || decision.reset) {
                     Logs.d("Network changed: ${decision.oldInterfaceName} -> ${decision.newInterfaceName}")

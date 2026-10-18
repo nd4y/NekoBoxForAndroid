@@ -213,9 +213,14 @@ class VpnService : BaseVpnService(),
 
     fun updateUnderlyingNetwork(builder: Builder? = null) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            SagerNet.underlyingNetwork?.let {
-                builder?.setUnderlyingNetworks(arrayOf(SagerNet.underlyingNetwork))
-                    ?: setUnderlyingNetworks(arrayOf(SagerNet.underlyingNetwork))
+            // Capture once: the network can disappear while the callback is being handled.
+            val networks = SagerNet.underlyingNetwork?.let { arrayOf(it) } ?: emptyArray()
+            try {
+                if (builder != null) builder.setUnderlyingNetworks(networks)
+                else setUnderlyingNetworks(networks)
+            } catch (e: IllegalArgumentException) {
+                // A network handle may have disappeared before ConnectivityService processes it.
+                io.nekohasekai.sagernet.control.ControlDiagnostics.event("network.underlying.stale", mapOf("error" to e.javaClass.name))
             }
         }
     }
