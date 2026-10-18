@@ -149,3 +149,7 @@ adb -s emulator-5580 shell am instrument -w com.nb4a.plus.debug.test/androidx.te
 ```
 
 The device tests verify denial for call/read/write/query/type/insert/update/delete and journal recovery from a partial cross-database commit. They temporarily modify synthetic configuration and restore the original configuration. Run only on a disposable test emulator. The command-line tests `tools/nekoctl/smoke_emulator.py` and `tools/nekoctl/lifecycle_emulator.py` exercise streamed JSON, partial updates, CAS, rollback and explicit lifecycle actions. Both require an explicit `emulator-*` serial and restore the original configuration. The lifecycle test may grant the initial VPN consent through the emulator UI.
+
+## Android power state
+
+`diagnostics.snapshot.power` reports `interactive`, `powerSaveMode`, `deviceIdle`, and `batteryOptimizationExempt`. The last two are null before Android6. A battery-exempt VPN keeps its core and overlay tunnels awake during Doze; a non-exempt VPN retains Android idle sleep/wake behavior. Changing the exemption while idle updates the core without reconnecting unrelated active traffic. Exiting idle preserves the configured wake recovery settings. Battery exemption is an Android system permission and is not included in full configuration import/export.

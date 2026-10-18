@@ -177,25 +177,55 @@ repetitions), Linux with race detection (three), and the physical Android
 device (three), without deliberately crashing the installed VPN application.
 Arbitrary C/JNI faults and OS kills still require Android exit/tombstone data.
 
+## Android Doze and overlay connectivity
+
+A forced deep-idle test on APK60 reproduced a separate failure: after85seconds,
+foreign/Russian DNS and HTTPS still worked, while first home DNS and home HTTPS
+failed. Leaving Doze immediately restored home DNS. Saved/running revisions and
+kernel process birth were unchanged. The Android receiver unconditionally called
+core.sleep on idle, intentionally pausing WireGuard even for a battery-exempt VPN.
+The original installed NekoBox was battery-exempt; the parallel debug fork was not.
+
+APK61 keeps native60 and corrects only Android policy: an exempt VPN stays awake
+in Doze, a non-exempt VPN retains sleep/wake behavior, exemption changes while idle
+resume or suspend the core, and idle exit retains user-configured wake recovery.
+Four JVM regressions cover these branches. Diagnostics expose the system power
+state and exemption. The fork was given the same system exemption as the original
+application. This system permission is separate from portable configuration.
+
 ## Physical acceptance
 
-USB reconnection confirmed the installed APK58 hash and native version. Cold
-restricted LTE passed; after85seconds without test traffic, the first unique
-home DNS query passed in180ms. Original logLevel0 was restored through a fresh
-full-document dry-run/CAS import and process restart. A quiet cold start, three
-complete Wi-Fi/LTE/Wi-Fi cycles and three rapid cycles passed all DNS/HTTPS
-checks with one background PID. Twelve more cycles under two concurrent traffic
-workers retained the process:243of258HTTPS requests returned200, with15transient
-errors during handover; all DNS/HTTPS passed after the network stabilized.
-The historical native panic above means those short checks do not establish
-long-term stability. APK60 adds the reproduced HTTP/2 correction and persistent
-panic capture; its final physical acceptance is pending build/deployment.
+Native60 passed three full Wi-Fi/LTE cycles, three rapid cycles, and twelve cycles
+with two concurrent HTTPS workers. During handover266of279requests succeeded;
+13in-flight failures remain counted as failures. All37steady-tail batches
+(111requests starting at least15seconds after the last switch) passed normal TLS.
+A10second total cellular outage recovered automatically. Six full-body transfers
+passed on LTE, including1MiB, Google204, GitHub, RU, homeHTML and a homeJSasset.
+A later kernel process-birth check proved the same process beyond63minutes, with
+empty native panic files. Host observation had a gap and does not establish a
+completed continuous65minute monitor. The failing Doze test above invalidated
+APK60 as the final version and led to APK61.
 
+APK61 passed eight independent85second deep-Doze intervals with the first unique
+home DNS reply in135-199ms; all6DNS/3HTTPS per interval passed while IDLE both
+before and after payload. One earlier measurement was invalid because the prior
+safety timer ended Doze early; it is preserved separately and not counted.
+A per-test marker isolates the watchdog; the repeated interval passed.
 
-Final observations and exact artifact/source hashes are recorded in the
-accompanying `artifacts/lte-stability/final/validation.json`. Tests use explicit
-USB serial, verify transport and saved/running revisions, issue real DNS
-packets including a unique uncached negative query, and require HTTPS200
-with normal certificate verification for foreign/Russian/home resources.
-The foreign trace must report a non-Russian exit. Full configuration,
-raw logs and diagnostic bundles remain outside the synced workspace.
+Six ordinary network phases and three rapid loops passed. Twelve further cycles
+with two concurrent workers produced243requests:236success and7in-flight failures
+(3SSLHandshakeException,4IOException). All30steady-tail batches90requests passed.
+After20seconds with cellular disabled, allDNS/HTTPS recovered automatically.
+Six complete-body HTTPS transfers passed on each of LTE and Wi-Fi:1MiB,
+Google204, GitHub, RussianHTML, homeHTML and a same-host homeJSasset. Tests kept
+the same kernel process birth throughout; network/wake reconnect preferences
+remain false, connection-reset preferences true. All146JVM tests pass.
+
+Final observations, OS-exit/bundle/config checks and exact artifact/source hashes
+are recorded in `artifacts/lte-stability/final/validation.json`.
+Tests use explicit USB serial, verify transport and saved/running revisions,
+issue real DNS packets including unique uncached queries, and require normal
+certificate verification for foreign/Russian/home HTTPS. The foreign trace must
+report a non-Russian exit. Full configuration, raw logs and diagnostic bundles
+remain outside the synced workspace. No enrolled NetBird profile is available
+for a field test. The identity of the historical APK58 panic remains unproven.
