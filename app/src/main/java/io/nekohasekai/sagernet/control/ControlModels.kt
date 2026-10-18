@@ -39,6 +39,16 @@ object ControlTypes {
                     value.isJsonPrimitive &&
                         value.asJsonPrimitive.isNumber &&
                         value.toString().toLongOrNull() != null
+                Float::class.java,
+                java.lang.Float::class.java ->
+                    value.isJsonPrimitive &&
+                        value.asJsonPrimitive.isNumber &&
+                        value.asString.toFloatOrNull()?.isFinite() == true
+                Double::class.java,
+                java.lang.Double::class.java ->
+                    value.isJsonPrimitive &&
+                        value.asJsonPrimitive.isNumber &&
+                        value.asString.toDoubleOrNull()?.isFinite() == true
                 else -> false
             }
         requireControl(valid, "INVALID_FIELD", "Incorrect field type or integer range")

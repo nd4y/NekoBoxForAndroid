@@ -42,11 +42,15 @@ object ControlApi {
                     "apiVersion" to 1,
                     "maxRequestBytes" to 1048576,
                     "secretExports" to true,
+                    "fullConfigSchema" to ControlFullConfig.SCHEMA,
+                    "fullConfigSchemaVersion" to 1,
                     "methods" to
                         listOf(
                             "capabilities",
                             "status",
                             "config.export",
+                            "config.import",
+                            "config.render",
                             "config.plan",
                             "config.apply",
                             "config.rollback",
@@ -80,16 +84,85 @@ object ControlApi {
                 )
             }
             "config.export" -> {
-                ControlJson.keys(p, setOf("includeSecrets"))
+                ControlJson.keys(p, setOf("includeSecrets", "full"))
+                if (p.has("full")) ControlTypes.check(p["full"], Boolean::class.java)
                 if (p.has("includeSecrets"))
                     ControlTypes.check(p["includeSecrets"], Boolean::class.java)
                 val s = ControlStore.capture()
-                val content = s.export()
+                val full = p["full"]?.asBoolean == true
+                val content = if (full) ControlFullConfig.export(s) else s.export()
+                val result =
+                    ControlJson.objectOf(
+                        "revision" to ControlStore.revision(s),
+                        "config" to
+                            if (p["includeSecrets"]?.asBoolean == true) content
+                            else if (full) ControlFullConfig.redact(content)
+                            else ControlJson.redact(content),
+                    )
+                if (full) {
+                    result.addProperty("schema", ControlFullConfig.SCHEMA)
+                    result.addProperty("schemaVersion", 1)
+                }
+                return result
+            }
+            "config.render" -> {
+                ControlJson.keys(p, setOf("profileId", "includeSecrets"))
+                if (p.has("includeSecrets"))
+                    ControlTypes.check(p["includeSecrets"], Boolean::class.java)
+                val snapshot = ControlStore.capture()
+                val id =
+                    if (p.has("profileId")) ControlJson.id(p, "profileId") else snapshot.selection()
+                val profile =
+                    snapshot.profiles.firstOrNull { it.id == id }
+                        ?: throw ControlError("NOT_FOUND", "Profile does not exist")
+                val generated =
+                    try {
+                        ControlAccess.preview(snapshot) {
+                            io.nekohasekai.sagernet.fmt.buildConfig(profile).config
+                        }
+                    } catch (e: Exception) {
+                        throw ControlError(
+                            "CONFIG_GENERATION",
+                            "Generation failed for profile $id (${e.javaClass.simpleName})",
+                        )
+                    }
+                val config = ControlJson.parseObject(generated)
                 return ControlJson.objectOf(
-                    "revision" to ControlStore.revision(s),
+                    "revision" to ControlStore.revision(snapshot),
+                    "profileId" to id,
                     "config" to
-                        if (p["includeSecrets"]?.asBoolean == true) content
-                        else ControlJson.redact(content),
+                        if (p["includeSecrets"]?.asBoolean == true) config
+                        else ControlJson.redact(config),
+                    "networkChecked" to false,
+                )
+            }
+            "config.import" -> {
+                ControlJson.keys(p, setOf("document", "expectedRevision", "dryRun"))
+                val document =
+                    p["document"]?.takeIf { it.isJsonObject }?.asJsonObject
+                        ?: throw ControlError("INVALID_CONFIG", "Expected complete document")
+                val before = ControlStore.capture()
+                val revision = ControlStore.revision(before)
+                val expected = ControlJson.string(p, "expectedRevision")
+                requireControl(
+                    expected == revision,
+                    "REVISION_CONFLICT",
+                    "Configuration changed; pull a fresh document",
+                )
+                if (p.has("dryRun")) ControlTypes.check(p["dryRun"], Boolean::class.java)
+                val next = ControlFullConfig.parse(before, document)
+                val roots = ControlValidation.validate(next)
+                if (p["dryRun"]?.asBoolean != true) return ControlStore.apply(expected, next)
+                return ControlJson.objectOf(
+                    "revision" to revision,
+                    "candidateRevision" to ControlStore.revision(next),
+                    "changes" to
+                        ControlJson.diff(
+                            ControlFullConfig.export(before),
+                            ControlFullConfig.export(next),
+                        ),
+                    "validatedProfiles" to roots,
+                    "networkChecked" to false,
                 )
             }
             "config.plan",

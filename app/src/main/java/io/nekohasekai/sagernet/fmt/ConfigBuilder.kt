@@ -266,6 +266,8 @@ fun buildConfig(
                 if (item.type == ProxyEntity.TYPE_MASTERDNSVPN) continue
                 if (regex != null && !regex.containsMatchIn(item.displayName())) continue
                 if (item.containsByeDPI()) continue
+                if (bean.skipInsecureProfiles &&
+                    io.nekohasekai.sagernet.fmt.internal.isInsecureProxySetMember(item, DataStore.globalAllowInsecure)) continue
                 when (item.type) {
                     ProxyEntity.TYPE_PROXY_SET -> error("Nested proxy set are not supported")
                     ProxyEntity.TYPE_CHAIN -> if (bean.type == ProxySetBean.TYPE_GROUP) {

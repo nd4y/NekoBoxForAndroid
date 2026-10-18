@@ -2,6 +2,9 @@ import json
 import os
 from pathlib import Path
 import sys
+import tempfile
+from contextlib import redirect_stdout, redirect_stderr
+from io import StringIO
 import subprocess
 import unittest
 from unittest.mock import patch
@@ -64,6 +67,53 @@ class ClientTests(unittest.TestCase):
         with self.assertRaises(nekoctl.TransportError):
             nekoctl.Client("emulator-5580").request("config.plan",{"text":"x"*1048576})
         run.assert_not_called()
+
+class FullDocumentTests(unittest.TestCase):
+    def document(self):
+        return {"schema":"nekobox.full-config", "schemaVersion":1, "revision":"base-revision",
+                "config":{"profiles":[],"groups":[],"rules":[],"preferences":{},"selectedProfile":0}}
+
+    @patch("nekoctl.Client.request")
+    def test_pull_writes_plain_complete_document_and_never_overwrites(self, request):
+        request.return_value={"ok":True,"apiVersion":1,"result":self.document()}
+        with tempfile.TemporaryDirectory() as d:
+            target=Path(d)/"config.json"
+            self.assertEqual(nekoctl.main(["--serial","emulator-5580","pull",str(target)]),0)
+            self.assertEqual(json.loads(target.read_text(encoding="utf-8")),self.document())
+            request.assert_called_with("config.export",{"includeSecrets":True,"full":True})
+            with redirect_stderr(StringIO()):
+                self.assertEqual(nekoctl.main(["--serial","emulator-5580","pull",str(target)]),3)
+            self.assertEqual(json.loads(target.read_text(encoding="utf-8")),self.document())
+
+    @patch("nekoctl.Client.request", return_value={"ok":True,"apiVersion":1,"result":{}})
+    def test_push_and_validate_use_file_revision_and_do_not_rewrite_document(self, request):
+        with tempfile.TemporaryDirectory() as d:
+            target=Path(d)/"config.json"; target.write_text(json.dumps(self.document()),encoding="utf-8")
+            original=target.read_bytes()
+            for command,dry in [("validate",True),("push",False),("import",False)]:
+                with redirect_stdout(StringIO()):
+                    self.assertEqual(nekoctl.main(["--serial","emulator-5580",command,str(target)]),0)
+                request.assert_called_with("config.import",{"document":self.document(),"expectedRevision":"base-revision","dryRun":dry})
+                self.assertEqual(target.read_bytes(),original)
+
+    @patch("nekoctl.Client.request", return_value={"ok":True,"apiVersion":1,"result":{}})
+    def test_explicit_revision_override_and_dry_run(self, request):
+        with tempfile.TemporaryDirectory() as d:
+            target=Path(d)/"config.json"; target.write_text(json.dumps(self.document()),encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                self.assertEqual(nekoctl.main(["--serial","emulator-5580","push",str(target),"--revision","current","--dry-run"]),0)
+            self.assertEqual(request.call_args.args[1]["expectedRevision"],"current")
+            self.assertTrue(request.call_args.args[1]["dryRun"])
+
+    @patch("nekoctl.Client.request")
+    def test_invalid_or_unbound_document_is_rejected_before_adb(self, request):
+        with tempfile.TemporaryDirectory() as d:
+            target=Path(d)/"config.json"
+            for doc in [{"operations":[]},dict(self.document(),revision=None)]:
+                target.write_text(json.dumps(doc),encoding="utf-8")
+                with redirect_stderr(StringIO()):
+                    self.assertEqual(nekoctl.main(["--serial","emulator-5580","push",str(target)]),3)
+            request.assert_not_called()
 
 if __name__ == "__main__":
     unittest.main()

@@ -90,6 +90,22 @@ def load_patch(path):
         raise TransportError("Cannot read patch: expected a UTF-8 JSON object, at most 1 MiB") from exc
 
 
+def load_document(path):
+    try:
+        raw = sys.stdin.buffer.read(8388609) if path == "-" else Path(path).read_bytes()
+        if len(raw) > 8388608:
+            raise ValueError("Too large")
+        doc = json.loads(raw.decode("utf-8-sig"))
+        if isinstance(doc, dict) and doc.get("ok") is True and isinstance(doc.get("result"), dict):
+            doc = doc["result"]  # Also accept the envelope written by export --full.
+        if (not isinstance(doc, dict) or doc.get("schema") != "nekobox.full-config"
+                or doc.get("schemaVersion") != 1 or not isinstance(doc.get("config"), dict)):
+            raise ValueError("Wrong schema")
+        return doc
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise TransportError("Cannot read full config: expected nekobox.full-config schemaVersion 1 JSON, at most 8 MiB") from exc
+
+
 def parser():
     root = argparse.ArgumentParser(description=__doc__)
     root.add_argument("--serial", default=os.environ.get("ANDROID_SERIAL"), help="Required target serial; no automatic device selection")
@@ -102,6 +118,18 @@ def parser():
         sub.add_parser(command)
     export = sub.add_parser("export", help="Export configuration, secrets redacted unless explicitly requested")
     export.add_argument("--include-secrets", action="store_true")
+    export.add_argument("--full", action="store_true", help="Versioned complete editable document, including every persistent preference")
+    render = sub.add_parser("render", help="Render generated native config without starting it")
+    render.add_argument("--profile", type=int)
+    render.add_argument("--include-secrets", action="store_true")
+    pull = sub.add_parser("pull", help="Save a complete editable config INCLUDING credentials to a new local file")
+    pull.add_argument("file")
+    for command in ("import", "push", "validate"):
+        p = sub.add_parser(command, help="Validate/replace complete config; revision defaults to the pulled document")
+        p.add_argument("file", help="Full JSON document, or - for stdin")
+        p.add_argument("--revision", help="Override base revision explicitly (CAS still enforced)")
+        if command != "validate":
+            p.add_argument("--dry-run", action="store_true", help="Validate and show diff without saving")
     for command in ("plan", "apply"):
         p = sub.add_parser(command)
         p.add_argument("patch", help="JSON patch file, or - for stdin")
@@ -128,9 +156,30 @@ def main(argv=None):
         collection = method if method in ("profiles", "groups", "rules", "settings") else None
         if collection:
             method = "config.export"
-        if method == "export":
+        if method == "pull":
+            if args.output:
+                raise TransportError("Use the pull file argument instead of --output")
+            args.output = args.file
+            method = "config.export"
+            params = {"includeSecrets": True, "full": True}
+        elif method == "export":
             method = "config.export"
             params = {"includeSecrets": args.include_secrets}
+            if args.full:
+                params["full"] = True
+        elif method == "render":
+            method = "config.render"
+            params = {"includeSecrets": args.include_secrets}
+            if args.profile is not None:
+                params["profileId"] = args.profile
+        elif method in ("import", "push", "validate"):
+            doc = load_document(args.file)
+            revision = args.revision or doc.get("revision")
+            if not isinstance(revision, str) or not revision:
+                raise TransportError("Full import requires the document revision or explicit --revision")
+            params = {"document": doc, "expectedRevision": revision,
+                      "dryRun": args.command == "validate" or args.dry_run}
+            method = "config.import"
         elif method in ("plan", "apply"):
             params = {"patch": load_patch(args.patch)}
             if method == "apply":
@@ -147,7 +196,8 @@ def main(argv=None):
         if collection and response["ok"]:
             result = response["result"]
             response["result"] = {"revision": result["revision"], collection: result["config"][collection]}
-        data = json.dumps(response, ensure_ascii=False, indent=2) + "\n"
+        payload = response["result"] if args.command == "pull" and response["ok"] else response
+        data = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
         if args.output:
             # Refuse overwrites, including symlinks; honor the user's normal Windows ACL inheritance.
             fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

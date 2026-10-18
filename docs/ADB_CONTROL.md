@@ -21,6 +21,28 @@ python tools/nekoctl/nekoctl.py vpn restart
 
 `--adb` accepts the full adb executable path. `--output` creates a new UTF-8 JSON file and refuses to overwrite an existing file. `export --include-secrets` explicitly requests stored profile credentials. Default exports hide credentials and opaque custom configuration; do not feed `<redacted>` values back into a patch. NetBird peer identity files are never exported. Shell arguments contain no configuration payload: requests are sent on stdin. The client uses the duplex shell protocol (`shell -T`) to wait for command completion; `exec-in` can close the transport at stdin EOF before a cold provider finishes starting. Avoid putting real credentials in shell history, public files, source control or screenshots.
 
+## Complete configuration workflow for an LLM
+
+```powershell
+python tools/nekoctl/nekoctl.py --serial DEVICE pull config.json
+# Edit config.json locally. Keep its schema, revision and all fields.
+python tools/nekoctl/nekoctl.py --serial DEVICE validate config.json
+python tools/nekoctl/nekoctl.py --serial DEVICE push config.json
+python tools/nekoctl/nekoctl.py --serial DEVICE status
+# Restart only when intended:
+python tools/nekoctl/nekoctl.py --serial DEVICE vpn restart
+```
+
+`pull` writes a plain `nekobox.full-config` schema-version-1 document to a NEW UTF-8 file. This complete document contains credentials, subscription details, stable IDs/order, rules, selection and every persistent preference, including keys unknown to the patch allowlist. Store it privately. `export --full --include-secrets` provides the same document inside the normal API envelope. The default `export` remains redacted and compatible with API v1 clients.
+
+`validate FILE` and `push FILE --dry-run` validate without changing saved configuration or VPN. `push` and its alias `import` replace configuration atomically using the existing recovery journal and checkpoint mechanism. They use the file's `revision` for CAS; a subscription/UI/API change returns `REVISION_CONFLICT`. Pull a fresh document and reapply the intended edit. `--revision` can explicitly bind a document to a separately inspected current revision. Imports never silently retry, rewrite the source file or restart VPN. A subsequent edit cycle should start with a fresh pull, or an explicitly updated base revision. `FILE=-` accepts stdin. Full input files may be up to 8 MiB; the compact streamed API envelope still must fit the advertised request limit.
+
+The `config` object has `profiles`, `groups`, `rules`, `preferences`, and `selectedProfile`. Profiles contain `id`, `groupId`, `userOrder`, `protocol`, `values`, and the internal `entityUuid`. `preferences` maps each name to `{ "type": "string", "value": "..." }`; types also include `boolean`, `int`, `long`, `float`, `string-set`, and `raw` for future opaque preference types. Keep complete objects: removing required fields, credentials or sections is rejected. Removing an entire profile/group/rule or preference is an explicit deletion/reset and is validated against references. Unknown fields, duplicate IDs, redacted placeholders, overflows and invalid known-setting ranges are rejected.
+
+Device authorization and runtime state remain local: `adbControlEnabled`, last-running profile and selected UI group are not imported. Android permissions, NetBird peer identity files, caches, counters and installed plugin binaries are not configuration documents. New devices require their own local opt-in and Android VPN consent. `capabilities` advertises `fullConfigSchema` and the supported methods.
+
+`render --profile ID` returns the generated native configuration without starting it; its default output is redacted. Use `--include-secrets` and a private `--output` file for local diagnostics. Rendering does not establish remote connections or guarantee runtime success.
+
 ## Editing configuration
 
 A patch is an object containing an ordered `operations` array. The maximum is 256 operations and 1 MiB per request. IDs are positive integers and remain stable. Omitted properties retain their values, including passwords; an explicit empty string clears a string. Unknown fields, nulls, wrong types and integer overflow are rejected. `capabilities` reports supported setting names/types and protocol field templates. Integer-valued Android preferences use JSON strings, for example `"mtu":"1400"`.
@@ -84,7 +106,7 @@ Authority: `${applicationId}.control`, hosted in the existing `:bg` process.
 Success: `{"ok":true,"apiVersion":1,"result":{...}}`.
 Failure: `{"ok":false,"apiVersion":1,"error":{"code":"REVISION_CONFLICT","message":"..."}}`.
 
-Methods: `capabilities`, `status`, `config.export`, `config.plan`, `config.apply`, `config.rollback`, `checkpoints.list`, `vpn.start`, `vpn.stop`, `vpn.restart`. `config.apply` parameters are `patch` and `expectedRevision`; rollback parameters are `checkpoint` and `expectedRevision`. `nekoctl` exit codes are 0 success, 2 API rejection, 3 transport/local failure. Errors never echo request JSON or native error messages that could contain credentials.
+Methods: `capabilities`, `status`, `config.export`, `config.import`, `config.render`, `config.plan`, `config.apply`, `config.rollback`, `checkpoints.list`, `vpn.start`, `vpn.stop`, `vpn.restart`. `config.apply` parameters are `patch` and `expectedRevision`; rollback parameters are `checkpoint` and `expectedRevision`. `nekoctl` exit codes are 0 success, 2 API rejection, 3 transport/local failure. Errors never echo request JSON or native error messages that could contain credentials.
 
 Every provider entry point checks `Binder.getCallingUid() == 2000` before clearing identity or dispatching work, plus the local opt-in. Root and ordinary application UIDs are not admitted. The manifest export is intentional, with the lint suppression confined to this provider; an Android instrumentation test exercises non-shell denial. Streams are bounded to 1 MiB, outstanding requests are bounded, UUID paths cannot traverse directories, and stale private request/result files are collected when subsequent requests arrive. Disabling the setting prevents new requests and is rechecked under the configuration commit lock.
 

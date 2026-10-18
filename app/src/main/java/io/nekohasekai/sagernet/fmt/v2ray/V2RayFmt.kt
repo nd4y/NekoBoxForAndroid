@@ -41,6 +41,16 @@ private fun String?.hasXhttpExtraValue(): Boolean {
     return !isNullOrBlank() && !trim().equals("null", ignoreCase = true)
 }
 
+/** Xray subscriptions also use sessionIDPlacement/sessionIDKey for the same wire fields. */
+private fun normalizeXhttpSessionAliases(json: JSONObject): JSONObject {
+    for ((alias, canonical) in listOf("sessionIDPlacement" to "session_placement", "sessionIDKey" to "session_key")) {
+        if (!json.has(canonical) && json.has(alias) && !json.isNull(alias)) {
+            json.put(canonical, json.get(alias))
+        }
+    }
+    return json
+}
+
 private fun applyAndroidXhttpPacketUpDefaults(mode: String?, json: JSONObject) {
     if (mode != "packet-up") return
     if (!json.has("sc_max_each_post_bytes")) {
@@ -1089,7 +1099,7 @@ fun buildSingBoxOutboundStreamSettings(bean: StandardV2RayBean): V2RayTransportO
                     // Convert base config to JSON
                     val baseJson = JSONObject(gson.toJson(baseConfig))
                     // Parse extra config
-                    val extraJson = JSONObject(bean.xhttpExtra)
+                    val extraJson = normalizeXhttpSessionAliases(JSONObject(bean.xhttpExtra))
                     // Merge allowed extra fields into base config
                     val allowedKeys = arrayOf(
                         "download", "xmux", "x_padding_bytes", "no_grpc_header",
