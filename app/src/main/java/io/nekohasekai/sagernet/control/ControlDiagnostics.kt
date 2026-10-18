@@ -203,6 +203,13 @@ object ControlDiagnostics {
             "javaHeapBytes" to
                 (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()),
             "coreLoggingEnabled" to (DataStore.logLevel > 0),
+            "power" to mapOf(
+                "interactive" to SagerNet.power.isInteractive,
+                "powerSaveMode" to SagerNet.power.isPowerSaveMode,
+                "deviceIdle" to if (Build.VERSION.SDK_INT >= 23) SagerNet.power.isDeviceIdleMode else null,
+                "batteryOptimizationExempt" to if (Build.VERSION.SDK_INT >= 23)
+                    SagerNet.power.isIgnoringBatteryOptimizations(BuildConfig.APPLICATION_ID) else null,
+            ),
             "exits" to exits,
             "threads" to threads,
             "logSources" to sources,

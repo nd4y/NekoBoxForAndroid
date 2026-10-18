@@ -57,16 +57,24 @@ class BaseService {
                 Intent.ACTION_SHUTDOWN -> service.persistStats()
                 Action.RELOAD -> service.reload()
                 // Action.SWITCH_WAKE_LOCK -> runOnDefaultDispatcher { service.switchWakeLock() }
-                PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED -> {
+                PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED,
+                CoreIdlePolicy.WHITELIST_CHANGED -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        if (SagerNet.power.isDeviceIdleMode) {
-                            proxy?.box?.sleep()
-                        } else {
-                            proxy?.box?.wake()
-                            service.handleConnectionRecovery(
-                                reconnect = DataStore.wakeReconnect,
-                                reset = DataStore.wakeResetConnections
-                            )
+                        val action = CoreIdlePolicy.action(
+                            SagerNet.power.isDeviceIdleMode,
+                            SagerNet.power.isIgnoringBatteryOptimizations(SagerNet.application.packageName),
+                            intent.action == PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED,
+                        )
+                        when (action) {
+                            CoreIdlePolicy.Action.Sleep -> proxy?.box?.sleep()
+                            CoreIdlePolicy.Action.Wake -> proxy?.box?.wake()
+                            CoreIdlePolicy.Action.WakeAndRecover -> {
+                                proxy?.box?.wake()
+                                service.handleConnectionRecovery(
+                                    reconnect = DataStore.wakeReconnect,
+                                    reset = DataStore.wakeResetConnections
+                                )
+                            }
                         }
                     }
                 }
@@ -552,6 +560,7 @@ class BaseService {
                     // addAction(Action.SWITCH_WAKE_LOCK)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
+                        addAction(CoreIdlePolicy.WHITELIST_CHANGED)
                     }
                     addAction(Action.RESET_UPSTREAM_CONNECTIONS)
                 }
