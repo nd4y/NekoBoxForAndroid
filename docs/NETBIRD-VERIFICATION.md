@@ -243,17 +243,82 @@ in approximately4ms. Local handshake and transfer counters were populated.
 No new crash/signal/ANR exit was found and all four Java/native crash sources
 were empty. A private19-file diagnostic bundle was complete and hash-verified.
 
-Initial physical UI checks passed live status/roster, start and cancellation.
-Final presentation polish (compact details, expandable roster, counts and local
-timestamps) still needs a foreground UI pass: the phone switched to other apps,
-so no unrelated screen was captured. USB ADB disappeared before final network
-transition tests; the verified, already paired WiFi ADB was used for final
-installation and WiFi acceptance. No WiFi/LTE switching was attempted through
-wireless ADB. Reconnect USB for those remaining tests. Earlier63/64 transition
-results are historical and do not substitute for a65 transition test.
+USB was subsequently reconnected and the final physical UI checks passed:
+compact live details, expanded roster, counters, help, start/cancel/completion,
+mode editing and apply/reconnect. Direct NetBird recovered automatically on
+returning from restricted LTE to WiFi; VLESS cold LTE startup also passed.
+However, the first subsequent VLESS WiFi/LTE cycle failed ordinary DNS/TLS.
+A later reconnect retained the old identity lock because gRPC shutdown was
+waiting for a reader spinning on an outer HTTP/2 stream error. Build65 therefore
+failed transition acceptance and is superseded by66. Earlier WiFi checks above
+are historical observations, not a successful overall acceptance of65.
 
 The configured emulator image was previously unavailable; no emulator acceptance
 is claimed. Private checkpoints and the64 APK remain available for rollback.
 The stored standby chain allows explicit VLESS selection without changing peer
 identity or restoring stale subscription data. No OS permissions, original
 NekoBox/official NetBird profiles, or unrelated system settings were changed.
+
+## Nested HTTP/2 transport correction, 66 (2026-10-19)
+
+XHTTP response bodies can return a concrete `http2.StreamError` repeatedly after
+the outer stream ends. Returning that type directly from a tunnel `net.Conn`
+caused nested HTTP/2 and gRPC readers to treat it as their own recoverable frame
+error, repeatedly read the failed body, and block gRPC/NetBird teardown. XHTTP
+now reports non-EOF read failures as `net.OpError`, retaining the original cause
+for `errors.Is`/`errors.As` while correctly identifying a transport failure.
+TLS verification and routing policy are unchanged.
+
+Two real nested-client regressions reproduced both a stuck HTTP/2 request and a
+blocked gRPC Close before the correction, then passed100 repetitions afterward.
+Full XHTTP, DNS transport and NetBird adapter suites, native Go build,
+150 Android JVM tests and24 Python CLI tests passed. Core source is pinned to
+`5f2b4ca140cfccab2582de54b97ea125aab9da32`; a source patch is retained under
+`patches/sing-box`. Build66/code315 contains the ARM64 native core plus66.
+The dual-ABI attempt hit Windows commit exhaustion; the bounded ARM64 build
+succeeded. No66 x86_64 or emulator acceptance is claimed.
+
+APK SHA256:
+`8c7b43c6896dfe297701f35f8d7ace4b93780211263f4159ce1f2b08ddbb107f`.
+The installed package hash, native/AAR equality,16KiB alignment, APK alignment
+and signatures were verified. The existing enrollment was retained.
+
+Physical acceptance evidence and any remaining limitations are recorded in
+`../../artifacts/netbird66/acceptance.json` in the enclosing task workspace.
+
+## Diagnostic capability redaction and normal phone run, 67 (2026-10-19)
+
+App67/code320 retains the exact core66 AAR. Default config/log redaction now
+also masks path and gRPC service-name capabilities, including fields embedded
+inside custom preference JSON. The CLI independently sanitizes legacy API
+responses and app-only OS logs while preserving valid bundle JSON and explicit
+secret-inclusive exports.152 JVM tests and25 Python tests passed. Phone checks
+confirmed masked generated paths and historical core logs, with the explicit
+full render still intact. APK/native equality,16KiB alignment, APK alignment,
+signatures and installed hash readback passed.
+
+APK SHA256:
+`aa39a51af212422ec2eb760ee49f1111a8f035599fdba8344bdf7b680cc4cac4`.
+
+With original logLevel0, the installed67 passed a cold WiFi start, three full
+WiFi/LTE cycles, three rapid cycles, and two VPN restarts. All10 measured payload
+phases passed overlay DNS, three TCP ports, SSH, full HTTP, ordinary DNS/TLS and
+foreign non-RU egress with the same kernel process birth. An initial series
+stopped after a successful traffic phase because a redundant ADB identity read
+timed out; its files remain separate. The final three-cycle series passed.
+USB then disappeared during the second restart's WiFi payload. That payload
+was completed read-only over the already paired wireless ADB, with the same
+process and connected VPN; no app restart masked the transport interruption.
+No crash/signal/ANR exit appeared as of the last snapshot.
+
+An initial66 public-DNS timeout remains preserved with an unproven exact cause;
+it did not recur in the measured67 series. This finite run does not establish
+indefinite stability or availability of external proxy/DNS services.
+
+Both USB and paired wireless ADB subsequently disappeared. Finalization is
+therefore **not complete**: last confirmed state is WiFi enabled and emergency
+VLESS through FastCon LTE RU. The attempted return to direct mode stopped in
+read-only planning; apply/restart did not execute. Reconnect USB and keep
+NekoBox foreground to restore direct mode, finish its final UI/recovery check,
+collect the fresh private peer/bundle/config audit, and remove only task-owned
+probe files. Current status is in `../../artifacts/netbird67/acceptance.json`.

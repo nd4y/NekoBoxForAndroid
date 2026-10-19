@@ -229,3 +229,14 @@ certificate verification for foreign/Russian/home HTTPS. The foreign trace must
 report a non-Russian exit. Full configuration, raw logs and diagnostic bundles
 remain outside the synced workspace. No enrolled NetBird profile is available
 for a field test. The identity of the historical APK58 panic remains unproven.
+
+## NetBird-enabled field verification, 66 (2026-10-19)
+
+The no-enrollment limitation above describes the earlier61 test only. The phone
+now has an enrolled NetBird profile with explicit direct and emergency VLESS
+modes. USB testing exposed a separate XHTTP transport error-boundary defect:
+outer HTTP/2 stream errors could spin nested HTTP/2/gRPC readers and prevent
+NetBird shutdown. Core66 wraps these as transport read errors, preserving their
+cause. Both nested-client regressions failed before the fix and passed100 times
+afterward. See `NETBIRD-VERIFICATION.md` and the enclosing task's66 acceptance
+artifact for the current physical results and residual limits.
