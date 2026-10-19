@@ -315,10 +315,29 @@ An initial66 public-DNS timeout remains preserved with an unproven exact cause;
 it did not recur in the measured67 series. This finite run does not establish
 indefinite stability or availability of external proxy/DNS services.
 
-Both USB and paired wireless ADB subsequently disappeared. Finalization is
-therefore **not complete**: last confirmed state is WiFi enabled and emergency
-VLESS through FastCon LTE RU. The attempted return to direct mode stopped in
-read-only planning; apply/restart did not execute. Reconnect USB and keep
-NekoBox foreground to restore direct mode, finish its final UI/recovery check,
-collect the fresh private peer/bundle/config audit, and remove only task-owned
-probe files. Current status is in `../../artifacts/netbird67/acceptance.json`.
+Both USB and paired wireless ADB subsequently disappeared, temporarily blocking
+finalization. After USB reconnection, only NetBird's connection mode was changed
+to direct through revision-checked API operations and a normal VPN restart.
+The original process birth was retained. Direct WiFi passed the full payload
+checks. On whitelist LTE, Cloud/signal and overlay traffic were unavailable,
+while ordinary DNS/TLS passed and direct mode remained selected. Returning to
+WiFi automatically restored Cloud, signal, overlay DNS, TCP, SSH and full HTTP.
+
+Final app67 UI checks passed live status, help, all24 peers, start/cancel and
+completion. The completed job received18 ICMP replies; six peers did not reply
+within the deadline. The target st1 used direct P2P and replied in4ms. At the
+final snapshot19 peers used P2P, one used relay, and four were connecting.
+Relay remains a fallback after direct ICE timeout/loss, rather than a mandatory
+path. The earlier app66 mode-edit/apply checks used the same native core.
+
+A fresh private19-file diagnostic bundle passed all entry hashes, capability
+path masking and configuration-consistency checks. Four crash logs were empty;
+there were no new crash/signal/ANR exits. Installed APK bytes still matched.
+Preferences, routing rules, enrollment, selected profile74567 and home/standby
+chains were preserved. Six old subscription entries in group11 were already
+absent at reconnect before this stage's mutations; their cause is unproven.
+The current316 profile IDs were retained, without restoring stale subscription
+data. All nine task-owned probe jars, their three empty folders and the known
+failed UI dump were removed. Final state: WiFi enabled, direct NetBird, logging
+off, saved/running revisions equal. Acceptance is complete for these measured
+paths; see `../../artifacts/netbird67/acceptance.json` for residual limits.
