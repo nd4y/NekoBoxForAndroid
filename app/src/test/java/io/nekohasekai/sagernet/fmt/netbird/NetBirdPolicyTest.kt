@@ -13,10 +13,11 @@ class NetBirdPolicyTest {
     @Test fun netbirdRequiresInnerPositionAndVlessUnderlay() {
         validateNetBirdChain(listOf("netbird", "vless"))
         validateNetBirdChain(listOf("netbird", "vless", "vless"))
+        validateNetBirdChain(listOf("netbird", "proxy-set", "vless", "vless"))
         for (chain in listOf(
             listOf("netbird"), listOf("vless", "netbird"),
             listOf("netbird", "socks"), listOf("netbird", "vless", "netbird"),
-            listOf("netbird", "vless", "proxy-set"),
+            listOf("netbird", "proxy-set", "socks"),
         )) {
             assertThrows(IllegalArgumentException::class.java) { validateNetBirdChain(chain) }
         }
@@ -98,4 +99,22 @@ class NetBirdPolicyTest {
         assertEquals("test-phone", netbird["hostname"])
     }
 
+    @Test fun vlessOnlyGroupsValidateEveryBranchAndRejectCycles() {
+        val bird = mapOf("type" to "netbird", "tag" to "bird", "detour" to "ru")
+        val leaf = mapOf("type" to "vless", "tag" to "leaf")
+        fun group(type: String = "urltest", members: List<String> = listOf("leaf")) =
+            mapOf("type" to type, "tag" to "ru", "outbounds" to members)
+        fun config(vararg nodes: Map<String, Any?>): Map<String, Any?> = mapOf("outbounds" to listOf(bird, *nodes))
+        validateNetBirdConfig(config(group(), leaf))
+        validateNetBirdConfig(config(group("selector"), leaf))
+        for (invalid in listOf(
+            config(group(), leaf + ("type" to "direct")),
+            config(group(members = emptyList()), leaf),
+            config(group(members = listOf("missing")), leaf),
+            config(group(members = listOf("ru")), leaf),
+            config(group(members = listOf("leaf", "bad")), leaf, mapOf("type" to "socks", "tag" to "bad")),
+            config(group(), leaf, leaf),
+            config(group("direct"), leaf),
+        )) assertThrows(IllegalArgumentException::class.java) { validateNetBirdConfig(invalid) }
+    }
 }

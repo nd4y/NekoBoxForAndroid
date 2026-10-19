@@ -34,8 +34,14 @@ itself is still governed by the existing NekoBox bootstrap DNS configuration.
   exclusive lease before constructing the client. An operating-system file lock
   also protects the identity directory against another process. A teardown
   timeout keeps these guards held until the process exits.
-- The immediate outer hop must be a concrete VLESS profile. Selectors, URLTest
-  groups, another NetBird and implicit direct routing are rejected.
+- The immediate outer hop must be a VLESS profile or a proxy set containing
+  only VLESS profiles. Native selector/URLTest trees must have nonempty,
+  existing VLESS-only branches; mixed, missing or cyclic branches are rejected,
+  including branches that are not currently selected. The graph is revalidated
+  before every underlay dial. Another NetBird and implicit direct routing are rejected.
+- When a proxy set also serves ordinary routing, the generated configuration
+  shares its physical outbound and health selection with NetBird. NetBird does
+  not create a second independent copy of that group.
 - Enrollment uses a setup key and an HTTPS management URL. Interactive SSO is
   not implemented in this version. After successful enrollment the setup key may
   be cleared; the saved peer identity is used for subsequent connections.
@@ -53,8 +59,8 @@ itself is still governed by the existing NekoBox bootstrap DNS configuration.
 
 ## Android usage
 
-Use the separate debug APK for acceptance testing. This work does not install an
-APK on the production phone or change existing profiles, credentials or subscriptions.
+Use the separate debug application for acceptance testing. Back up its current
+configuration before adding the NetBird profile and its routing rule.
 
 1. Create or import the VLESS profile that will carry NetBird. Test that VLESS
    profile on its own first. Its TCP transport must be able to reach the NetBird
@@ -67,9 +73,9 @@ APK on the production phone or change existing profiles, credentials or subscrip
    empty for manual DNS configuration. Do not enter a wildcard, a public parent
    suffix or the hostname/zone used to bootstrap the VLESS proxy itself.
 4. Add a **Proxy chain** with this top-to-bottom order in the chain editor:
-   **VLESS, NetBird**. In traffic direction that means applications enter NetBird
+   **VLESS, NetBird**, or **VLESS-only proxy set, NetBird**. In traffic direction that means applications enter NetBird
    and NetBird opens its transport connections through VLESS. A standalone
-   NetBird profile, the reversed order, a proxy set or two NetBird profiles in
+   NetBird profile, the reversed order, a mixed proxy set or two NetBird profiles in
    one generated core configuration is rejected.
 5. For split routing, keep the normal VLESS profile selected and add an enabled
    routing rule targeting the new chain for the actual NetBird IPv4 addresses,
@@ -83,7 +89,8 @@ network. The first implementation carries IPv4 overlay traffic. Both application
 TCP and UDP travel inside the TCP/WebSocket relay transport.
 
 Internal DNS rules take precedence over FakeDNS, direct DNS and LAN bypass for
-those explicit suffixes. DNS reverse mapping preserves that choice for subsequent
+those explicit suffixes, including after global and profile custom JSON merges.
+DNS reverse mapping preserves that choice for subsequent
 connections to the returned addresses. Requests outside those suffixes retain the
 normal NekoBox DNS policy. Applications using their own encrypted DNS may require
 an explicit IPv4 routing rule because their queries bypass the app DNS router.

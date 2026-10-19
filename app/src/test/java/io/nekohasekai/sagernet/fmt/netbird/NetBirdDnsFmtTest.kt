@@ -8,6 +8,27 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NetBirdDnsFmtTest {
+    @Test fun replacedCustomDnsAndRoutingStillUseOverlayForExplicitZones() {
+        val bootstrap = mapOf("outbound" to listOf("any"), "server" to "bootstrap")
+        val bypass = mapOf("ip_is_private" to true, "outbound" to "direct")
+        val config = mutableMapOf<String, Any?>(
+            "dns" to mapOf("servers" to listOf(mapOf("tag" to "bootstrap")), "rules" to listOf(bootstrap), "reverse_mapping" to false),
+            "route" to mapOf("rules" to listOf(bypass)),
+        )
+        applyNetBirdDnsRouting(config, "office-netbird", listOf("office.example"))
+        val once = config.toString()
+        applyNetBirdDnsRouting(config, "office-netbird", listOf("office.example"))
+        assertEquals(once, config.toString())
+        val dns = config["dns"] as Map<*, *>
+        assertEquals(true, dns["reverse_mapping"])
+        val dnsRules = dns["rules"] as List<*>
+        assertEquals("dns-netbird", (dnsRules.first() as Map<*, *>)["server"])
+        assertEquals(bootstrap, dnsRules[1])
+        val routeRules = (config["route"] as Map<*, *>)["rules"] as List<*>
+        assertEquals("office-netbird", (routeRules.first() as Map<*, *>)["outbound"])
+        assertEquals(bypass, routeRules[1])
+    }
+
     @Test fun explicitZonesPrecedeFakeDnsDirectDnsAndLanBypass() {
         val fakeDns = DNSRule_DefaultOptions().apply { server = "dns-fake" }
         val directDns = DNSRule_DefaultOptions().apply { server = "dns-direct" }

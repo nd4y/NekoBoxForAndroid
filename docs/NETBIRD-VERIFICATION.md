@@ -97,10 +97,72 @@ require HTTPS. The fixture therefore does not validate a particular server's
 certificate, Reality/TLS credentials, ACL configuration, advertised resource
 routes or external relay reachability.
 
-Physical Android Wi-Fi/LTE transitions, background battery behavior and
-production enrollment require a separate device acceptance run. A working
-local fixture or APK build is not proof of those paths. No APK has been
-installed on the production phone and no production profile has been changed.
+At the initial version-49 fixture acceptance, physical Android transitions,
+background behavior and production enrollment were still untested. The later
+physical acceptance below supersedes that limitation for the measured scenarios.
+A working local fixture or APK build alone is not proof of those paths.
+
+## Physical Cloud acceptance, 2026-10-19
+
+The installed debug application is version `1.4.2-63`, ARM64 versionCode `300`,
+with native `plus-62`. The separately signed production application and official
+NetBird application's profiles were preserved. USB ADB and the control API were
+used for installation, configuration and measurements.
+
+- A temporary userspace client first tested normal direct NetBird, without a
+  VLESS underlay or Android VPN. Cloud enrollment succeeded. After the user
+  assigned the required Cloud access group, internal DNS, TCP 5001/443/22,
+  an SSH banner and HTTP 5000 succeeded on Wi-Fi. On restricted LTE, direct
+  control connections and resource TCP failed. Wi-Fi restored access in the
+  same process; the first recovery sample had transient TCP timeouts before
+  the subsequent complete sample passed.
+- Only that newly enrolled test identity was transferred into the debug app's
+  private profile directory after stopping the temporary client. Byte equality
+  and the retained peer key were checked without printing key material. The
+  setup-key field was empty before the chained client first started.
+- NetBird uses the existing VLESS-only RU URLTest group. Its physical group
+  outbound and health selection are shared with ordinary routing. Every
+  selectable branch is validated before dialing; missing, empty, cyclic and
+  mixed/direct branches are rejected. Windows graph tests passed 100 repeats;
+  the isolated Linux helper tests passed 20 repeats with the race detector.
+- A real device failure exposed custom JSON replacing the generated internal
+  DNS rule. Explicit overlay DNS and routing now apply after all custom merges.
+  The regression test covers replaced lists, priority and idempotence. The
+  complete JVM suite passed 148 tests, with no failures, errors or skips.
+- The generated chain passed Wi-Fi and LTE DNS, TCP 5001/443/22, SSH-banner and
+  complete HTTP-body checks. Three complete Wi-Fi/LTE cycles and three rapid
+  switching cycles passed in the same process. Existing Russian, foreign and
+  home DNS/TLS probes also passed, with foreign egress outside Russia.
+- The final configuration uses only the actual DNS zone and IPv4 mesh prefix
+  received from Cloud. All 321 eligible profile roots validated before applying
+  that patch. A subsequent core restart on LTE reused the saved identity and
+  passed the complete functional phase.
+- After 85 seconds in verified deep Doze on LTE, the first overlay DNS, all
+  three TCP connections, SSH banner and complete HTTP body passed while the
+  device remained in IDLE. Forced idle was then removed. The same process
+  survived the whole acceptance sequence, including the planned core restart.
+- Literal internal IPv4 access passed on both networks. Complete TLS response
+  bodies passed on Wi-Fi and LTE for a 1-MiB download, Google, GitHub, a Russian
+  site and a home service plus its static asset; no partial body was hidden by
+  an HTTP-status-only check.
+- Final readback found no new operating-system process exits, Java/native
+  crashes or ANRs; all four crash log sources were empty. The diagnostic bundle
+  contained 17 files and every manifest hash verified, with a stable revision.
+  Original rules, preferences, home WireGuard, location permissions, battery
+  exemption and manual whitelist selection were retained. Wi-Fi was restored,
+  forced idle removed, and the connected VPN left running. Task-owned phone
+  probes and temporary enrollment files were removed; the app identity remains.
+
+The APK SHA256 is
+`6c0b0847ef703ac4a87a00f42c492850e2aef9d96222e4cbf8e4e82deb19a692`.
+All 630 Android input files matched the build checkout; APK native bytes matched
+the AAR, both native ABI ELF LOAD alignments were at least 16 KiB, zip alignment
+passed with `-P 16`, and APK v1/v2 signatures verified. The AAR SHA256 is
+`4853b046a744f4795b192ef1d2b9a553a7d0c4de631617169c19e88d3ff6cab7`.
+Raw configurations, peer topology, logs and the diagnostic bundle remain in
+private LocalAppData. Sanitized package and acceptance evidence is stored in the
+sibling `artifacts/netbird63` directory. These are bounded field tests, not a
+guarantee against every future provider outage or every possible device state.
 
 ## Operational note
 

@@ -100,9 +100,8 @@ func (o *Outbound) Start(stage adapter.StartStage) error {
 	defer close(done)
 	defer cancel()
 
-	detour, ok := o.manager.Outbound(o.options.Detour)
-	if !ok || detour.Type() != "vless" {
-		return errors.New("netbird detour must reference an existing VLESS outbound")
+	if _, err := validatedVLESSDetour(o.manager, o.options.Detour); err != nil {
+		return err
 	}
 	if strings.TrimSpace(o.options.SetupKey) == "" {
 		info, err := os.Stat(filepath.Join(o.options.StateDirectory, "config.json"))
@@ -123,7 +122,7 @@ func (o *Outbound) Start(stage adapter.StartStage) error {
 	o.mu.Lock()
 	o.releaseIdentity = releaseIdentity
 	o.mu.Unlock()
-	u := newUnderlay(o.ctx, singDialer{detour})
+	u := newUnderlay(o.ctx, vlessGroupDialer{manager: o.manager, tag: o.options.Detour})
 	o.mu.Lock()
 	if o.closed {
 		o.mu.Unlock()
@@ -277,13 +276,6 @@ func (o *Outbound) stopClient(ctx context.Context) error {
 		return nil
 	}
 	return err
-}
-
-type singDialer struct{ outbound adapter.Outbound }
-
-func (d singDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	// Preserve the hostname for VLESS to resolve at its remote end.
-	return d.outbound.DialContext(ctx, network, M.ParseSocksaddr(address))
 }
 
 type logWriter struct {

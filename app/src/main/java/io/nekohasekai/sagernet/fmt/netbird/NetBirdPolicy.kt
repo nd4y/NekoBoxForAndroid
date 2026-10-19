@@ -10,10 +10,12 @@ fun validateNetBirdChain(protocols: List<String>, forTest: Boolean = false) {
     require(!forTest) {
         "NetBird cannot run in background profile tests. Test VLESS separately, then connect the NetBird chain."
     }
-    require(indexes.size == 1 && indexes.single() == 0 && protocols.getOrNull(1) == "vless") {
-        "NetBird must be the final destination in a chain with a VLESS proxy before it (VLESS, NetBird in the chain editor)."
+    require(indexes.size == 1 && indexes.single() == 0 && protocols.getOrNull(1) in setOf("vless", "proxy-set")) {
+        "NetBird must be the final destination after VLESS or a VLESS-only proxy set in the chain editor."
     }
-    require("proxy-set" !in protocols) { "NetBird cannot be combined with a proxy set." }
+    require(protocols.drop(1).all { it == "vless" || it == "proxy-set" }) {
+        "NetBird proxy sets must contain only VLESS profiles."
+    }
 }
 
 fun validateNetBirdManagementUrl(value: String) {
@@ -59,11 +61,32 @@ fun validateNetBirdConfig(
             "Custom JSON cannot override the NetBird profile identity directory."
         }
         val detour = netbird["detour"] as? String
-        val underlays = outbounds.filter { it["tag"] == detour }
-        require(!detour.isNullOrBlank() && underlays.size == 1 && underlays.single()["type"] == "vless") {
-            "NetBird requires a VLESS detour; direct fallback is not allowed."
+        val visiting = mutableSetOf<String>()
+        val checked = mutableSetOf<String>()
+        fun validateUnderlay(tag: String?, depth: Int = 0) {
+            require(!tag.isNullOrBlank() && depth <= 64) { "NetBird requires a valid VLESS detour." }
+            val matches = outbounds.filter { it["tag"] == tag }
+            require(matches.size == 1) { "NetBird detour is missing or duplicated." }
+            val underlay = matches.single()
+            if (underlay["type"] == "vless") return
+            require(underlay["type"] in setOf("urltest", "selector")) {
+                "NetBird requires VLESS-only detours; direct fallback is not allowed."
+            }
+            require(visiting.add(tag)) { "NetBird detour group contains a cycle." }
+            try {
+                if (tag in checked) return
+                val members = underlay["outbounds"] as? List<*>
+                require(!members.isNullOrEmpty() && members.all { it is String && it.isNotBlank() }) {
+                    "NetBird detour group requires existing VLESS members."
+                }
+                members.forEach { validateUnderlay(it as String, depth + 1) }
+                checked.add(tag)
+            } finally {
+                visiting.remove(tag)
+            }
         }
         require(netbird["tag"] != detour) { "NetBird detour cannot point to itself." }
+        validateUnderlay(detour)
     }
 }
 
