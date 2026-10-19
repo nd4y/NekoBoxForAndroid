@@ -991,8 +991,8 @@
     <string name="tls_record_fragment">Фрагментация TLS с упаковкой в TLS-записи</string>
     <string name="mutual_tls">Взаимный TLS (mTLS)</string>
     <string name="language">Язык</string>
-    <string name="netbird_chain_title">NetBird через VLESS</string>
-    <string name="netbird_chain_summary">Создайте цепочку: сначала профиль VLESS или группа только из VLESS, затем NetBird. Управление и relay работают через VLESS по TCP. Прямые соединения с узлами, STUN и QUIC отключены. При отказе VLESS NetBird остаётся без соединения. Одновременно доступен один профиль NetBird.</string>
+    <string name="netbird_chain_title">NetBird</string>
+    <string name="netbird_chain_summary">Прямой NetBird - основной режим с приоритетом P2P; relay подключается при недоступности P2P. Для сетей с белыми списками явно выберите аварийный режим через VLESS и создайте цепочку: сначала VLESS или группа только из VLESS, затем NetBird. Автоматического переключения режимов нет. Одновременно доступен один профиль NetBird.</string>
     <string name="netbird_management_url">URL сервера управления</string>
     <string name="netbird_invalid_management_url">Укажите HTTPS-адрес сервера без учётных данных, пути и параметров запроса.</string>
     <string name="netbird_setup_key">Ключ регистрации (setup key)</string>

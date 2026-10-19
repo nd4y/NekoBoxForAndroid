@@ -27,6 +27,7 @@ class NetBirdSettingsActivity : ProfileSettingsActivity<NetBirdBean>() {
     private val managementUrl = pbm.add(PreferenceBinding(Type.Text, "managementUrl"))
     private val setupKey = pbm.add(PreferenceBinding(Type.Text, "setupKey"))
     private val hostname = pbm.add(PreferenceBinding(Type.Text, "hostname"))
+    private val connectionMode = pbm.add(PreferenceBinding(Type.Text, "connectionMode"))
     private val dnsDomains = pbm.add(PreferenceBinding(Type.Text, "dnsDomains"))
 
     override fun NetBirdBean.init() { pbm.writeToCacheAll(this) }

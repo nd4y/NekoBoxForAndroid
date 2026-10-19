@@ -26,3 +26,11 @@ Tests: `python -m unittest test_nekoctl.py -v`. `smoke_emulator.py` and `lifecyc
 For complete LLM editing, use `pull config.json`, edit the document, `validate config.json`, then `push config.json`. `import` aliases `push`; `push --dry-run` aliases validation. Complete pulls include credentials and must stay private. The document carries its base revision, so push detects intervening edits. Android authorization stays local, and saving never implicitly restarts VPN. See API.md for the full document schema and recovery behavior. `render --profile ID` provides a redacted generated native configuration for diagnostics.
 
 Read logs with `logs --source core` or `logs --source events --follow`. Collect a private ZIP with `diagnostics FILE` (`bundle` alias). Collection is read-only, bounded, preserves partial results when the provider fails, and masks credentials by default; `--include-secrets` is explicit. See API.md for sources, cursor/reset behavior, partial manifests and privacy limits.
+
+NetBird: `netbird status` reads the live mode, Cloud/signal, proxy selection and
+peer roster; `netbird peers` selects just the roster. `netbird diagnose --follow`
+starts a bounded ICMP job for authorized peers and waits; `netbird results` reads
+it without starting probes, and `netbird cancel` cancels it. A `no_reply` result
+does not distinguish an offline peer from ICMP filtering. `stale: true` means a
+network change invalidated the results. Diagnostic ZIPs include both live state
+and the last job. Prefix each command with `--serial DEVICE` as above.

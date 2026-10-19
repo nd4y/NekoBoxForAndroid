@@ -33,6 +33,9 @@ type Outbound struct {
 	logger          log.ContextLogger
 	options         OutboundOptions
 	manager         adapter.OutboundManager
+	diagMu          sync.Mutex
+	job             DiagnosticJob
+	diagCancel      context.CancelFunc
 	mu              sync.RWMutex
 	client          peerClient
 	newClient       func(embed.Options) (peerClient, error)
@@ -55,7 +58,16 @@ type peerClient interface {
 }
 
 func NewOutbound(ctx context.Context, _ adapter.Router, logger log.ContextLogger, tag string, options OutboundOptions) (adapter.Outbound, error) {
-	if options.Detour == "" || options.Detour == tag {
+	if options.ConnectionMode == "" {
+		options.ConnectionMode = "vless"
+	}
+	if options.ConnectionMode != "direct" && options.ConnectionMode != "vless" {
+		return nil, errors.New("invalid NetBird connection mode")
+	}
+	if options.ConnectionMode == "direct" && options.Detour != "" {
+		return nil, errors.New("direct NetBird cannot have a detour")
+	}
+	if options.ConnectionMode == "vless" && (options.Detour == "" || options.Detour == tag) {
 		return nil, errors.New("netbird requires a separate VLESS detour")
 	}
 	u, err := url.Parse(options.ManagementURL)
@@ -100,8 +112,12 @@ func (o *Outbound) Start(stage adapter.StartStage) error {
 	defer close(done)
 	defer cancel()
 
-	if _, err := validatedVLESSDetour(o.manager, o.options.Detour); err != nil {
-		return err
+	if o.options.ConnectionMode != "direct" {
+		if _, err := validatedVLESSDetour(o.manager, o.options.Detour); err != nil {
+			return err
+		}
+	} else if PhysicalResolver == nil {
+		return errors.New("physical DNS resolver is unavailable")
 	}
 	if strings.TrimSpace(o.options.SetupKey) == "" {
 		info, err := os.Stat(filepath.Join(o.options.StateDirectory, "config.json"))
@@ -139,7 +155,7 @@ func (o *Outbound) Start(stage adapter.StartStage) error {
 	o.mu.Lock()
 	o.releaseProcess = releaseProcess
 	o.mu.Unlock()
-	client, err := o.newClient(embed.Options{
+	opts := embed.Options{
 		DeviceName:     o.options.Hostname,
 		ManagementURL:  o.options.ManagementURL,
 		SetupKey:       o.options.SetupKey,
@@ -150,7 +166,12 @@ func (o *Outbound) Start(stage adapter.StartStage) error {
 		DisableIPv6:    true,
 		LogLevel:       "warn",
 		LogOutput:      logWriter{logger: o.logger, secret: o.options.SetupKey},
-	})
+	}
+	if o.options.ConnectionMode == "direct" {
+		opts.UnderlayDialer = nil
+		opts.DirectResolver = PhysicalResolver
+	}
+	client, err := o.newClient(opts)
 	if err != nil {
 		u.Close()
 		return fmt.Errorf("initialize netbird: %w", err)
@@ -160,7 +181,7 @@ func (o *Outbound) Start(stage adapter.StartStage) error {
 	o.mu.Unlock()
 	if err = client.Start(ctx); err != nil {
 		u.Close()
-		return fmt.Errorf("start netbird through VLESS: %w", err)
+		return fmt.Errorf("start netbird (%s): %w", o.options.ConnectionMode, err)
 	}
 	o.mu.Lock()
 	if o.closed {
@@ -168,8 +189,11 @@ func (o *Outbound) Start(stage adapter.StartStage) error {
 		return net.ErrClosed
 	}
 	o.ready = true
+	runtimePeer.Lock()
+	runtimePeer.outbound = o
+	runtimePeer.Unlock()
 	o.mu.Unlock()
-	o.logger.Info("NetBird client started through VLESS; relay-only underlay")
+	o.logger.Info("NetBird client started: ", o.options.ConnectionMode)
 	return nil
 }
 
@@ -211,11 +235,26 @@ func (o *Outbound) ListenPacket(ctx context.Context, _ M.Socksaddr) (net.PacketC
 }
 
 func (o *Outbound) InterfaceUpdated() {
+	o.diagMu.Lock()
+	if len(o.job.Results) > 0 {
+		o.job.Stale = true
+	}
+	if o.diagCancel != nil {
+		o.diagCancel()
+	}
+	o.diagMu.Unlock()
 	o.mu.RLock()
 	u := o.underlay
 	o.mu.RUnlock()
 	if u != nil {
 		u.Reset()
+	}
+	if o.options.ConnectionMode == "direct" {
+		if client, err := o.getClient(); err == nil {
+			if p, ok := client.(observablePeer); ok {
+				go p.NotifyNetworkChange()
+			}
+		}
 	}
 }
 
@@ -228,6 +267,16 @@ func (o *Outbound) Close() error {
 	o.closed = true
 	u, cancelStart, done := o.underlay, o.startCancel, o.startDone
 	o.mu.Unlock()
+	runtimePeer.Lock()
+	if runtimePeer.outbound == o {
+		runtimePeer.outbound = nil
+	}
+	runtimePeer.Unlock()
+	o.diagMu.Lock()
+	if o.diagCancel != nil {
+		o.diagCancel()
+	}
+	o.diagMu.Unlock()
 	if cancelStart != nil {
 		cancelStart()
 	}

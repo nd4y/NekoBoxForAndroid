@@ -156,6 +156,11 @@ class BaseService {
             callbacks.unregister(cb)
         }
 
+        override fun netBirdStatus(): String = Libcore.netBirdStatus()
+        override fun netBirdDiagnostics(): String = Libcore.netBirdDiagnostics()
+        override fun startNetBirdDiagnostics(): String = Libcore.startNetBirdDiagnostics()
+        override fun cancelNetBirdDiagnostics(): String = Libcore.cancelNetBirdDiagnostics()
+
         override fun urlTest(): Int {
             if (data?.proxy?.box == null) {
                 error("core not started")

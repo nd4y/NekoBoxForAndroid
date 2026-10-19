@@ -499,6 +499,8 @@ fun buildConfig(
             } else {
                 entity.resolveChainInternal()
             }
+            val configuredNetBird = profileList.singleOrNull { it.netbirdBean != null }
+            val directNetBird = configuredNetBird?.netbirdBean?.connectionMode == "direct"
             validateNetBirdChain(profileList.map {
                 when (val bean = it.requireBean()) {
                     is NetBirdBean -> "netbird"
@@ -506,7 +508,10 @@ fun buildConfig(
                     is ProxySetBean -> "proxy-set"
                     else -> "other"
                 }
-            }, forTest = forTest)
+            }, forTest = forTest, direct = directNetBird)
+            // Keep the saved VLESS chain as a standby, but omit every outer hop
+            // when this profile explicitly selects normal direct NetBird.
+            if (directNetBird) profileList = mutableListOf(checkNotNull(configuredNetBird))
             val rootGroupKey = profileList.map { it.id } to applyGroupForceUTLS
             if (entity.id in netbirdSharedProxySets) {
                 proxySetRootTags[rootGroupKey]?.let { return it }

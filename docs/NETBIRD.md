@@ -1,6 +1,52 @@
-# NetBird through a VLESS chain
+# NetBird: direct and emergency VLESS modes
 
-## Design
+
+## Primary direct mode and live UI (65)
+
+Open the side menu **NetBird**. The first section reads the running background core:
+Cloud/signal connection, device name/IP, actual mode, and the selected VLESS group
+and leaf when applicable. The peer roster includes connected, idle and offline
+peers authorized by management, P2P/relay for connected peers, measured probe RTT,
+WireGuard handshake time and byte counters. No enrollment or WireGuard keys are
+exposed. Local WireGuard statistics refresh without network health-probe traffic.
+
+New profiles default to **Direct NetBird (primary)**. P2P is preferred: peer relay negotiation waits up to 8 seconds for direct ICE.
+A working P2P connection does not open a per-peer relay; losing P2P enables relay
+fallback immediately. A peer that advertises no ICE support uses relay directly.
+NetBird may retain its server-level relay control connection for discovery, but
+that does not mean peer traffic uses relay. VLESS mode uses relay immediately.
+The normal ICE/STUN/UDP/P2P
+and NetBird relay transports use protected sockets and DNS on Android's physical
+network. The Android interface inventory supplies ICE candidates; the WireGuard
+UDP bind is protected too. Physical network changes recreate the embedded engine
+using the saved identity, without creating a new device or switching modes.
+
+**Through VLESS (emergency)** is explicitly selected for whitelist networks.
+Create a chain with VLESS or a VLESS-only proxy group first and NetBird last.
+The stored chain remains available as standby when direct mode is selected;
+the builder omits its outer hops in direct mode without replacing route IDs.
+There is no automatic fallback or network classification. Legacy v1 profiles
+retain VLESS on upgrade to avoid silently changing an established tunnel.
+Save a mode edit, then use **Apply saved settings and reconnect VPN** in the hub.
+The enrollment identity and app split routing are retained across mode changes.
+
+**Check all peers** sends one ICMP echo per authorized IPv4 peer through the
+userspace overlay: four workers, 12-second deadlines including direct-first connection setup, cancellation, a maximum
+of 1024 active probes (remaining peers have an explicit limit result). No ports
+are scanned. A reply proves overlay packet exchange; a timeout can mean filtering
+or an offline peer and is not reported as confirmed tunnel failure. Idle peers
+can connect on demand. Tap the summary for details, expand the roster for all
+peers. Network changes invalidate old probe results; rerun for the new network.
+Polling is stopped while the screen is paused. VPN shutdown cancels probes.
+
+ADB Control API mirrors the UI with `netbird.status`,
+`netbird.diagnostics.start/get/cancel`. All take empty parameters, preserve the
+existing shell-UID authorization and return JSON. Starting a running job is
+idempotent; reads never launch probes. `nekoctl netbird status`, `peers`,
+`diagnose --follow`, `results`, and `cancel` wrap these methods. Diagnostic bundles
+include current NetBird state and the last job without starting a new check.
+
+## Emergency VLESS transport
 
 The Android VPN remains owned by NekoBox. A `netbird` outbound runs an embedded
 NetBird client with a userspace network stack. Its control connections and relay

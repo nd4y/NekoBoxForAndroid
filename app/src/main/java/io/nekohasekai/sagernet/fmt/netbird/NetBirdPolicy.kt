@@ -4,12 +4,13 @@ import java.net.URI
 import java.net.IDN
 
 /** Input is ordered from the application/overlay towards the physical network. */
-fun validateNetBirdChain(protocols: List<String>, forTest: Boolean = false) {
+fun validateNetBirdChain(protocols: List<String>, forTest: Boolean = false, direct: Boolean = false) {
     val indexes = protocols.indices.filter { protocols[it] == "netbird" }
     if (indexes.isEmpty()) return
     require(!forTest) {
         "NetBird cannot run in background profile tests. Test VLESS separately, then connect the NetBird chain."
     }
+    if (direct && protocols == listOf("netbird")) return
     require(indexes.size == 1 && indexes.single() == 0 && protocols.getOrNull(1) in setOf("vless", "proxy-set")) {
         "NetBird must be the final destination after VLESS or a VLESS-only proxy set in the chain editor."
     }
@@ -61,6 +62,12 @@ fun validateNetBirdConfig(
             "Custom JSON cannot override the NetBird profile identity directory."
         }
         val detour = netbird["detour"] as? String
+        val mode = netbird["connection_mode"] ?: "vless"
+        require(mode in setOf("direct", "vless")) { "Invalid NetBird connection mode." }
+        if (mode == "direct") {
+            require(detour.isNullOrBlank()) { "Direct NetBird cannot use a proxy detour." }
+            continue
+        }
         val visiting = mutableSetOf<String>()
         val checked = mutableSetOf<String>()
         fun validateUnderlay(tag: String?, depth: Int = 0) {

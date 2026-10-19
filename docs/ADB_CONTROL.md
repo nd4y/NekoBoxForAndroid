@@ -153,3 +153,36 @@ The device tests verify denial for call/read/write/query/type/insert/update/dele
 ## Android power state
 
 `diagnostics.snapshot.power` reports `interactive`, `powerSaveMode`, `deviceIdle`, and `batteryOptimizationExempt`. The last two are null before Android6. A battery-exempt VPN keeps its core and overlay tunnels awake during Doze; a non-exempt VPN retains Android idle sleep/wake behavior. Changing the exemption while idle updates the core without reconnecting unrelated active traffic. Exiting idle preserves the configured wake recovery settings. Battery exemption is an Android system permission and is not included in full configuration import/export.
+
+## Live NetBird
+
+All four methods take empty parameters and use the existing shell-UID opt-in:
+
+| Method | Result |
+| --- | --- |
+| `netbird.status` | Active flag, explicit `direct`/`vless` mode, Cloud/signal state, local identity name/IP, selected VLESS group/leaf, and authorized peer roster with P2P/relay, handshake and byte counters. |
+| `netbird.diagnostics.start` | Starts one asynchronous overlay ICMP job, or returns the already running job. |
+| `netbird.diagnostics.get` | Last job and per-peer results; never starts network probes. |
+| `netbird.diagnostics.cancel` | Cancels the running job without stopping the VPN. |
+
+Jobs report `running`, `completed`, `cancelled`, or `unavailable`; the initial
+empty state means no check has run. Results distinguish `queued`, `checking`,
+`reply` (with `rtt_ms`), `no_reply`, `cancelled`, and `limit`. Four workers check
+authorized IPv4 peers with 12-second deadlines including direct connection
+setup; at most 1024 peers are actively probed. No ports are scanned. A timeout
+does not prove that a peer is offline or that the tunnel is broken. `stale: true`
+means the network changed after the job began, so rerun before using its results.
+Stopping the VPN cancels checks; a new core has a new job history.
+
+Direct mode prefers P2P and defers peer relay negotiation for up to 8 seconds.
+Working P2P does not open a per-peer relay until direct loss; a peer advertising
+no ICE support can immediately use relay. VLESS emergency mode uses relay
+immediately. Mode changes use `profile.update` with NetBird field
+`connectionMode` (`direct`/`vless`), followed by an explicit `vpn.restart`.
+Neither network changes nor diagnostic reads switch modes automatically.
+
+`nekoctl netbird status`, `peers`, `diagnose --follow`, `results`, and `cancel`
+wrap these methods. Diagnostic bundles add `netbird-status.json` and
+`netbird-diagnostics.json` when supported, without launching probes. Live status
+contains no setup key or WireGuard key; peer names and network addresses remain
+private diagnostic data.

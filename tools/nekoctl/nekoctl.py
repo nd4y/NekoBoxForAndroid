@@ -152,6 +152,9 @@ def parser():
     rollback = sub.add_parser("rollback")
     rollback.add_argument("checkpoint")
     rollback.add_argument("--revision", required=True)
+    netbird = sub.add_parser("netbird", help="Live NetBird state and bounded overlay peer checks")
+    netbird.add_argument("action", choices=("status", "peers", "diagnose", "results", "cancel"))
+    netbird.add_argument("--follow", action="store_true", help="Wait for diagnostic completion")
     vpn = sub.add_parser("vpn")
     vpn.add_argument("action", choices=("start", "stop", "restart"))
     return root
@@ -246,7 +249,17 @@ def main(argv=None):
             method = "checkpoints.list"
         elif method == "vpn":
             method = "vpn." + args.action
+        if method == "netbird":
+            method = {"status":"netbird.status", "peers":"netbird.status",
+                      "diagnose":"netbird.diagnostics.start", "results":"netbird.diagnostics.get",
+                      "cancel":"netbird.diagnostics.cancel"}[args.action]
         response = client.request(method, params)
+        if args.command == "netbird" and args.follow and args.action == "diagnose":
+            while response.get("ok") and response.get("result", {}).get("state") == "running":
+                time.sleep(1)
+                response = client.request("netbird.diagnostics.get", {})
+        if args.command == "netbird" and args.action == "peers" and response.get("ok"):
+            response["result"] = response["result"].get("peers", [])
         if collection and response["ok"]:
             result = response["result"]
             response["result"] = {"revision": result["revision"], collection: result["config"][collection]}

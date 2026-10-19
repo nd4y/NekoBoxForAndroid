@@ -4244,6 +4244,7 @@ public class SingBoxOptions {
     }
 
     public static class Outbound_NetBirdOptions extends Outbound {
+        public String connection_mode;
         public String management_url;
         public String setup_key;
         public String hostname;

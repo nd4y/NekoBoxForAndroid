@@ -205,3 +205,55 @@ claimed. The narrowly scoped evidence is saved in
 Subsequent heavy phases were serialized and bounded. The integration fixture
 runs in a transient private network with a 2-GB memory limit, no swap and one
 CPU; it cannot reach production services.
+
+## Direct-first live UI and diagnostics, 65 (2026-10-19)
+
+Build65/code310 adds explicit direct/VLESS modes, live state and authorized peer
+diagnostics in UI, Binder and ADB/nekoctl. Android physical DNS, interface
+inventory and protected WireGuard/transport sockets support P2P while NekoBox
+owns the VPN. Direct peer relay negotiation waits up to8s for ICE, stays unused
+with working P2P, and becomes eligible on direct loss. The VLESS emergency path
+remains explicit and immediate. No automatic mode switch is implemented.
+
+150 JVM tests and24 Python tests pass. Go adapter/underlay/transport/peer suites
+pass, including exclusive mode changes, bounded cancellation, stale network
+evidence, deferred relay, healthy P2P suppressing relay, and shutdown cancellation.
+Upstream embed tests also passed during this change. ARM64 and x86_64 native
+builds succeeded; all634 Android inputs matched the build checkout, APK native
+bytes match the final AAR, 16KiB alignment and signing checks passed.
+Final ARM64 APK SHA256:
+`778bdd518938540f289c4e3bd3fc9f4fd5f8404676eefb7cc8c9d42b47f78361`.
+Native sing-box version remains plus62 because that dependency was unchanged;
+the final AAR/source fingerprints are recorded in the artifact build metadata.
+
+The final APK was installed over the existing fork; installed bytes matched.
+The existing enrollment, all322 profile IDs,10 groups,13 rules, preferences,
+home WireGuard and saved VLESS standby chain were preserved. Only the NetBird
+mode was explicitly changed to direct. Existing automatic subscription updates
+were retained; one revision change during acceptance required a normal reload,
+after which saved/running revisions matched. No new registration key was used.
+
+Final physical WiFi acceptance passed configured overlay DNS, three TCP ports,
+SSH banner, complete HTTP response, existing Russian/foreign/home DNS/TLS, and
+foreign egress outside RU in the same process. The roster contained24 peers:
+20 connected through P2P, zero through relay, four still connecting.18 replied
+to the all-peer ICMP job and six did not reply within its deadline. These six
+were not asserted offline. The configured overlay target used P2P and replied
+in approximately4ms. Local handshake and transfer counters were populated.
+No new crash/signal/ANR exit was found and all four Java/native crash sources
+were empty. A private19-file diagnostic bundle was complete and hash-verified.
+
+Initial physical UI checks passed live status/roster, start and cancellation.
+Final presentation polish (compact details, expandable roster, counts and local
+timestamps) still needs a foreground UI pass: the phone switched to other apps,
+so no unrelated screen was captured. USB ADB disappeared before final network
+transition tests; the verified, already paired WiFi ADB was used for final
+installation and WiFi acceptance. No WiFi/LTE switching was attempted through
+wireless ADB. Reconnect USB for those remaining tests. Earlier63/64 transition
+results are historical and do not substitute for a65 transition test.
+
+The configured emulator image was previously unavailable; no emulator acceptance
+is claimed. Private checkpoints and the64 APK remain available for rollback.
+The stored standby chain allows explicit VLESS selection without changing peer
+identity or restoring stale subscription data. No OS permissions, original
+NekoBox/official NetBird profiles, or unrelated system settings were changed.

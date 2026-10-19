@@ -1034,8 +1034,8 @@
     <string name="core_profiler_failed">Profiler failed: %s</string>
     <string name="core_profiler_saving">Saving...</string>
     <string name="action_netbird" translatable="false">NetBird</string>
-    <string name="netbird_chain_title">NetBird through VLESS</string>
-    <string name="netbird_chain_summary">Create a proxy chain with a VLESS profile or VLESS-only group first and NetBird last. Control and relay connections use VLESS over TCP. Direct peer connections, STUN and QUIC are disabled. If VLESS fails, NetBird stays disconnected. Only one NetBird profile can run at a time.</string>
+    <string name="netbird_chain_title">NetBird</string>
+    <string name="netbird_chain_summary">Direct NetBird is the primary mode with P2P first and relay only when P2P is unavailable. For whitelist networks, explicitly select emergency VLESS mode and create a chain: VLESS profile or VLESS-only group first, NetBird last. There is no automatic mode switching. Only one NetBird profile can run at a time.</string>
     <string name="netbird_management_url">Management server URL</string>
     <string name="netbird_invalid_management_url">Enter an HTTPS server address without credentials, a path or query.</string>
     <string name="netbird_setup_key">Setup key</string>

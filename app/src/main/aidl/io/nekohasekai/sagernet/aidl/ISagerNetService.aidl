@@ -10,6 +10,10 @@ interface ISagerNetService {
   oneway void unregisterCallback(in ISagerNetServiceCallback cb);
 
   int urlTest();
+  String netBirdStatus();
+  String netBirdDiagnostics();
+  String startNetBirdDiagnostics();
+  String cancelNetBirdDiagnostics();
 
   boolean isCoreProfilingRunning();
   boolean hasCoreProfilerSnapshot();

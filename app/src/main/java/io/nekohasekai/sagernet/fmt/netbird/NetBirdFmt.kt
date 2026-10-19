@@ -13,6 +13,8 @@ fun buildSingBoxOutboundNetBirdBean(
     require(profileId > 0) { "Save the NetBird profile before connecting." }
     return SingBoxOptions.Outbound_NetBirdOptions().apply {
         type = "netbird"
+        require(bean.connectionMode in setOf("direct", "vless")) { "Invalid NetBird connection mode" }
+        connection_mode = bean.connectionMode
         management_url = bean.managementUrl.trimEnd('/')
         setup_key = if (forExport) "" else bean.setupKey
         hostname = bean.hostname

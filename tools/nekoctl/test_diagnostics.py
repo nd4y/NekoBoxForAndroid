@@ -27,6 +27,24 @@ def fake_system(client, args, **kwargs):
 
 class DiagnosticTests(unittest.TestCase):
     @patch('neko_diagnostics.system_read', side_effect=fake_system)
+    def test_bundle_reads_netbird_snapshots_without_starting_probes(self, _read):
+        client = FakeClient()
+        original = client.request
+        def request(method, params=None):
+            response = original(method, params)
+            if method == 'capabilities':
+                response['result']['methods'] = ['netbird.status', 'netbird.diagnostics.get']
+            return response
+        client.request = request
+        with tempfile.TemporaryDirectory() as directory:
+            file = Path(directory) / 'bundle.zip'
+            self.assertTrue(collect_bundle(client, file)['complete'])
+            with zipfile.ZipFile(file) as bundle:
+                self.assertIn('netbird-status.json', bundle.namelist())
+                self.assertIn('netbird-diagnostics.json', bundle.namelist())
+        self.assertNotIn('netbird.diagnostics.start', [method for method, _ in client.calls])
+
+    @patch('neko_diagnostics.system_read', side_effect=fake_system)
     def test_native_crash_sources_follow_capabilities_and_keep_old_apps_compatible(self, _read):
         for supported in (False, True):
             with self.subTest(supported=supported), tempfile.TemporaryDirectory() as d:

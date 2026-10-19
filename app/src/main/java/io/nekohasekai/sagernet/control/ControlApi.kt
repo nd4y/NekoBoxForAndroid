@@ -1,5 +1,7 @@
 package io.nekohasekai.sagernet.control
 
+import libcore.Libcore
+import com.google.gson.JsonParser
 import android.os.Handler
 import android.os.Looper
 import com.google.gson.JsonObject
@@ -53,6 +55,10 @@ object ControlApi {
                             "status",
                             "logs.read",
                             "diagnostics.snapshot",
+                            "netbird.status",
+                            "netbird.diagnostics.start",
+                            "netbird.diagnostics.get",
+                            "netbird.diagnostics.cancel",
                             "config.export",
                             "config.import",
                             "config.render",
@@ -69,6 +75,15 @@ object ControlApi {
                     "validation" to
                         listOf("typed-fields", "references", "generated-config", "native-options"),
                 )
+            }
+            "netbird.status", "netbird.diagnostics.start", "netbird.diagnostics.get", "netbird.diagnostics.cancel" -> {
+                ControlJson.keys(p, emptySet())
+                return JsonParser.parseString(when(method) {
+                    "netbird.status" -> Libcore.netBirdStatus()
+                    "netbird.diagnostics.start" -> Libcore.startNetBirdDiagnostics()
+                    "netbird.diagnostics.cancel" -> Libcore.cancelNetBirdDiagnostics()
+                    else -> Libcore.netBirdDiagnostics()
+                })
             }
             "logs.read" -> return ControlDiagnostics.read(p)
             "diagnostics.snapshot" -> {

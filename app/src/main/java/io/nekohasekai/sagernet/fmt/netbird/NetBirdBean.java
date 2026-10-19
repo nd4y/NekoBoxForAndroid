@@ -13,6 +13,7 @@ public class NetBirdBean extends AbstractBean {
     public String setupKey;
     public String hostname;
     public String dnsDomains;
+    public String connectionMode;
 
     @Override
     public void initializeDefaultValues() {
@@ -21,26 +22,29 @@ public class NetBirdBean extends AbstractBean {
         if (setupKey == null) setupKey = "";
         if (hostname == null) hostname = "nekobox-android";
         if (dnsDomains == null) dnsDomains = "";
+        if (connectionMode == null) connectionMode = "direct";
     }
 
     @Override
     public void serialize(ByteBufferOutput output) {
-        output.writeInt(1);
+        output.writeInt(2);
         super.serialize(output);
         output.writeString(managementUrl);
         output.writeString(setupKey);
         output.writeString(hostname);
         output.writeString(dnsDomains);
+        output.writeString(connectionMode);
     }
 
     @Override
     public void deserialize(ByteBufferInput input) {
-        input.readInt();
+        int version = input.readInt();
         super.deserialize(input);
         managementUrl = input.readString();
         setupKey = input.readString();
         hostname = input.readString();
         dnsDomains = input.readString();
+        connectionMode = version >= 2 ? input.readString() : "vless";
     }
 
     @Override public String displayAddress() { return managementUrl; }

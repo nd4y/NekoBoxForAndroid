@@ -91,7 +91,10 @@ def collect_bundle(client, destination, include_secrets=False, logcat_lines=1000
         api('snapshot.json', 'diagnostics.snapshot')
         before = api('status-before.json', 'status')
         capabilities = api('capabilities.json', 'capabilities')
-        api('config.json', 'config.export', {'full': True, 'includeSecrets': include_secrets})
+        if 'netbird.status' in (capabilities or {}).get('methods', []):
+            api('netbird-status.json', 'netbird.status')
+            api('netbird-diagnostics.json', 'netbird.diagnostics.get')
+        api('config.json', 'config.export' , {'full': True, 'includeSecrets': include_secrets})
         api('generated.json', 'config.render', {'includeSecrets': include_secrets})
         for source in ('core', 'previous', 'events', 'crash-bg', 'crash-main'):
             api('logs/' + source + '.json', 'logs.read', {'source': source, 'maxBytes': 131072, 'includeSecrets': include_secrets})
