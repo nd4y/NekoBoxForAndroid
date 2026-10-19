@@ -62,6 +62,19 @@ itself is still governed by the existing NekoBox bootstrap DNS configuration.
 Use the separate debug application for acceptance testing. Back up its current
 configuration before adding the NetBird profile and its routing rule.
 
+Open **side menu -> NetBird** for all settings of this integration in one place:
+the server, masked setup key, device name and internal DNS suffixes; connection
+chains and the outer VLESS/profile-set editors; existing domain/network rules
+and a new rule with the chain already selected. With several chains, choose the
+target chain first. New profiles and rules are written only when saved.
+The page refreshes after returning from an editor. The profile editor also links
+to this page; save pending edits before following that link.
+
+Tapping a standalone NetBird row in the main profile list opens these settings
+without selecting it as the main outbound or interrupting the active VPN.
+The profile picker still allows adding that same profile to a chain. Existing
+NetBird profiles are also editable from their original group in the profile list.
+
 1. Create or import the VLESS profile that will carry NetBird. Test that VLESS
    profile on its own first. Its TCP transport must be able to reach the NetBird
    management, signal and WebSocket relay services.

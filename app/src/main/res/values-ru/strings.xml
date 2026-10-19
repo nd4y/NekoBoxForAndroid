@@ -992,7 +992,7 @@
     <string name="mutual_tls">Взаимный TLS (mTLS)</string>
     <string name="language">Язык</string>
     <string name="netbird_chain_title">NetBird через VLESS</string>
-    <string name="netbird_chain_summary">Создайте цепочку: сначала VLESS, затем NetBird. Управление и relay работают через VLESS по TCP. Прямые соединения с узлами, STUN и QUIC отключены. При отказе VLESS NetBird остаётся без соединения. Одновременно доступен один профиль NetBird. Фоновые тесты профиля отключены; проверяйте VLESS отдельно.</string>
+    <string name="netbird_chain_summary">Создайте цепочку: сначала профиль VLESS или группа только из VLESS, затем NetBird. Управление и relay работают через VLESS по TCP. Прямые соединения с узлами, STUN и QUIC отключены. При отказе VLESS NetBird остаётся без соединения. Одновременно доступен один профиль NetBird.</string>
     <string name="netbird_management_url">URL сервера управления</string>
     <string name="netbird_invalid_management_url">Укажите HTTPS-адрес сервера без учётных данных, пути и параметров запроса.</string>
     <string name="netbird_setup_key">Ключ регистрации (setup key)</string>
@@ -1002,4 +1002,22 @@
     <string name="netbird_dns_domains">DNS-суффиксы NetBird (необязательно)</string>
     <string name="netbird_dns_domains_summary">Внутренние DNS-суффиксы через запятую, например example.netbird.cloud. Запросы DNS и соединения для этих имён направляются в NetBird. Оставьте пустым для ручной настройки правил.</string>
     <string name="netbird_invalid_dns_domains">Укажите DNS-суффиксы через запятую, например example.netbird.cloud.</string>
+    <string name="netbird_ui_intro">Настройки NetBird</string>
+    <string name="netbird_add_profile">Добавить профиль NetBird</string>
+    <string name="netbird_no_profiles">Профилей NetBird пока нет</string>
+    <string name="netbird_profile_settings">Сервер, ключ регистрации, имя устройства и DNS</string>
+    <string name="netbird_chain_item">Подключение: %1$s</string>
+    <string name="netbird_add_chain">Добавить цепочку подключения</string>
+    <string name="netbird_add_chain_summary">Добавьте сначала профиль VLESS или группу только из VLESS, затем этот профиль NetBird.</string>
+    <string name="netbird_rule_item">Маршрутизация: %1$s</string>
+    <string name="netbird_rule_enabled">Включено</string>
+    <string name="netbird_rule_disabled">Выключено</string>
+    <string name="netbird_add_rule">Добавить правило для доменов или сетей</string>
+    <string name="netbird_add_rule_summary">Цепочка NetBird уже выбрана. Укажите реальные домены или сети IPv4, доступные вашему устройству.</string>
+    <string name="netbird_create_chain_first">Сначала создайте цепочку подключения.</string>
+    <string name="netbird_choose_chain">Выберите цепочку NetBird</string>
+    <string name="netbird_outer_item">Внешний прокси: %1$s</string>
+    <string name="netbird_connections">Подключение и маршрутизация сетей</string>
+    <string name="netbird_connections_summary">Изменить внешний профиль или группу VLESS, правила для доменов и сетей IPv4.</string>
+    <string name="netbird_save_first">Сначала сохраните изменения профиля.</string>
 </resources>

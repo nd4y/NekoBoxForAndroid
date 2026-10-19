@@ -228,6 +228,9 @@
             android:name="io.nekohasekai.sagernet.ui.profile.NetBirdSettingsActivity"
             android:configChanges="uiMode" />
         <activity
+            android:name="io.nekohasekai.sagernet.ui.NetBirdActivity"
+            android:configChanges="uiMode" />
+        <activity
             android:name="io.nekohasekai.sagernet.ui.profile.TrustTunnelSettingsActivity"
             android:configChanges="uiMode" />
         <activity

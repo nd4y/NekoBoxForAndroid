@@ -33,4 +33,8 @@
     <Preference
         app:selectable="false"
         app:summary="@string/netbird_identity_summary" />
+    <Preference
+        app:key="netbirdConnections"
+        app:title="@string/netbird_connections"
+        app:summary="@string/netbird_connections_summary" />
 </PreferenceScreen>

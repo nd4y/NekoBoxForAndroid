@@ -166,6 +166,33 @@ guarantee against every future provider outage or every possible device state.
 
 ## Operational note
 
+### UI consolidation, version 1.4.2-64
+
+The drawer now has a NetBird page with enrollment/DNS settings, related chains,
+outer VLESS or proxy-set editors, domain/network rule editors and creation
+shortcuts. A new routing rule receives the chosen chain in its unsaved editor;
+canceling does not add a rule. Standalone NetBird rows open this page instead
+of selecting an invalid main outbound and interrupting a working VPN. Profile
+picker behavior for constructing chains remains unchanged.
+
+The final ARM64 debug APK (versionCode 305, native plus-62 unchanged) passed
+148 JVM tests. All 631 Android inputs matched the build checkout; native bytes
+matched the same verified AAR. Its SHA256 is
+`27da14af8959450f675932048eb4e078401e1defee0d4c269c364c618c6c0063`.
+Physical phone UI checks covered the drawer entry, populated profile editor,
+unchanged save, chain and outer-group editors, domain and IPv4 rule editors,
+new-rule chain preselection and cancel, new-profile cancel, safe profile-row
+navigation and the profile-to-hub link. Screenshots and UI trees remain private.
+API readback confirmed existing preferences, rules, core profiles and selection
+were preserved. Final Wi-Fi and LTE phases passed overlay DNS/TCP/SSH/HTTP and
+existing Russian/foreign/home DNS/TLS in the same process.
+
+The existing AVD could not start because its configured SDK system image lacked
+`system.img`. Its data was preserved; no image was removed or downloaded. This
+release's UI acceptance used the physical phone, not that unavailable emulator.
+Drawer screenshots were used to cross-check UI hierarchy output, which could
+still describe the underlying profile list while the drawer was visible.
+
 During initial parallel Linux toolchain/NDK preparation at 01:31 Moscow on
 2026-10-18, WSL and existing containers restarted. A bounded read-only review of
 Windows Hyper-V events identified a guest kernel panic: `Fatal local machine

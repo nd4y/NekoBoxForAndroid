@@ -1035,7 +1035,7 @@
     <string name="core_profiler_saving">Saving...</string>
     <string name="action_netbird" translatable="false">NetBird</string>
     <string name="netbird_chain_title">NetBird through VLESS</string>
-    <string name="netbird_chain_summary">Create a proxy chain with VLESS first and NetBird last. Control and relay connections use VLESS over TCP. Direct peer connections, STUN and QUIC are disabled. If VLESS fails, NetBird stays disconnected. Only one NetBird profile can run at a time. Background profile tests are disabled; test VLESS separately.</string>
+    <string name="netbird_chain_summary">Create a proxy chain with a VLESS profile or VLESS-only group first and NetBird last. Control and relay connections use VLESS over TCP. Direct peer connections, STUN and QUIC are disabled. If VLESS fails, NetBird stays disconnected. Only one NetBird profile can run at a time.</string>
     <string name="netbird_management_url">Management server URL</string>
     <string name="netbird_invalid_management_url">Enter an HTTPS server address without credentials, a path or query.</string>
     <string name="netbird_setup_key">Setup key</string>
@@ -1045,4 +1045,22 @@
     <string name="netbird_dns_domains">NetBird DNS suffixes (optional)</string>
     <string name="netbird_dns_domains_summary">Comma-separated internal DNS suffixes, for example example.netbird.cloud. DNS and connections for these names use NetBird. Leave blank to configure routing manually.</string>
     <string name="netbird_invalid_dns_domains">Enter explicit DNS suffixes separated by commas, for example example.netbird.cloud.</string>
+    <string name="netbird_ui_intro">NetBird settings</string>
+    <string name="netbird_add_profile">Add NetBird profile</string>
+    <string name="netbird_no_profiles">No NetBird profiles yet</string>
+    <string name="netbird_profile_settings">Server, enrollment key, device name and DNS</string>
+    <string name="netbird_chain_item">Connection: %1$s</string>
+    <string name="netbird_add_chain">Add connection chain</string>
+    <string name="netbird_add_chain_summary">Add a VLESS profile or VLESS-only group first, then this NetBird profile.</string>
+    <string name="netbird_rule_item">Routing: %1$s</string>
+    <string name="netbird_rule_enabled">Enabled</string>
+    <string name="netbird_rule_disabled">Disabled</string>
+    <string name="netbird_add_rule">Add domain or network rule</string>
+    <string name="netbird_add_rule_summary">The NetBird chain is preselected. Enter actual domains or IPv4 networks granted by your server.</string>
+    <string name="netbird_create_chain_first">Create a connection chain first.</string>
+    <string name="netbird_choose_chain">Choose NetBird chain</string>
+    <string name="netbird_outer_item">Outer proxy: %1$s</string>
+    <string name="netbird_connections">Connection and network routing</string>
+    <string name="netbird_connections_summary">Edit the outer VLESS profile or group, domains and IPv4 network rules.</string>
+    <string name="netbird_save_first">Save the profile changes first.</string>
 </resources>

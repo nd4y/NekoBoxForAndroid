@@ -65,6 +65,7 @@ class RouteSettingsActivity(
     companion object {
         const val EXTRA_ROUTE_ID = "id"
         const val EXTRA_PACKAGE_NAME = "pkg"
+        const val EXTRA_OUTBOUND_ID = "outboundId"
         private const val WIFI_LOCATION_PERMISSION_REQUEST_CODE = 1001
 
         private const val ROUTE_PROTOCOL_SELECTOR = "routeProtocolSelector"
@@ -363,6 +364,11 @@ class RouteSettingsActivity(
             runOnDefaultDispatcher {
                 if (editingId == 0L) {
                     init(intent.getStringExtra(EXTRA_PACKAGE_NAME))
+                    val outboundId = intent.getLongExtra(EXTRA_OUTBOUND_ID, 0L)
+                    if (outboundId > 0L && SagerDatabase.proxyDao.getById(outboundId) != null) {
+                        DataStore.routeOutbound = 3
+                        DataStore.routeOutboundRule = outboundId
+                    }
                 } else {
                     val ruleEntity = SagerDatabase.rulesDao.getById(editingId)
                     if (ruleEntity == null) {

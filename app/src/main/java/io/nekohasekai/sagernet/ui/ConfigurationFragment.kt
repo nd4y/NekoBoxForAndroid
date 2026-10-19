@@ -1962,6 +1962,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                     view.setOnClickListener {
                         (requireActivity() as SelectCallback).returnProfile(proxyEntity.id)
                     }
+                } else if (proxyEntity.netbirdBean != null) {
+                    // This outbound requires a chain. Opening its settings must not replace
+                    // the active main profile and tear down an otherwise working VPN.
+                    view.setOnClickListener {
+                        startActivity(Intent(requireContext(), NetBirdActivity::class.java))
+                    }
                 } else {
                     view.setOnClickListener {
                         runOnDefaultDispatcher {

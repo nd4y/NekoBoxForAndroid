@@ -1,12 +1,16 @@
 package io.nekohasekai.sagernet.ui.profile
 
 import android.os.Bundle
+import android.content.Intent
 import android.text.InputType
 import android.view.Menu
 import android.widget.Toast
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
 import io.nekohasekai.sagernet.R
+import io.nekohasekai.sagernet.database.DataStore
+import io.nekohasekai.sagernet.ui.NetBirdActivity
+import androidx.preference.Preference
 import io.nekohasekai.sagernet.fmt.netbird.NetBirdBean
 import io.nekohasekai.sagernet.fmt.netbird.validateNetBirdManagementUrl
 import io.nekohasekai.sagernet.fmt.netbird.parseNetBirdDnsDomains
@@ -63,6 +67,19 @@ class NetBirdSettingsActivity : ProfileSettingsActivity<NetBirdBean>() {
     override fun PreferenceFragmentCompat.createPreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.netbird_preferences)
         pbm.setPreferenceFragment(this)
+        findPreference<Preference>("netbirdConnections")!!.apply {
+            isEnabled = DataStore.editingId != 0L
+            summary = getString(if (isEnabled) R.string.netbird_connections_summary else R.string.netbird_save_first)
+            setOnPreferenceClickListener {
+                // Profile editors share one edit cache. Do not keep this editor under another one.
+                if (DataStore.dirty) Toast.makeText(requireContext(), R.string.netbird_save_first, Toast.LENGTH_LONG).show()
+                else {
+                    this@NetBirdSettingsActivity.finish()
+                    startActivity(Intent(requireContext(), NetBirdActivity::class.java))
+                }
+                true
+            }
+        }
         (setupKey.preference as EditTextPreference).apply {
             summaryProvider = PasswordSummaryProvider
             setOnBindEditTextListener {
