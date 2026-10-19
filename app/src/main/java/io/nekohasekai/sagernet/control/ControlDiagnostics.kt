@@ -84,12 +84,15 @@ object ControlDiagnostics {
             if (element.isJsonObject)
                 element.asJsonObject.entrySet().forEach { (k, v) -> visit(v, k) }
             else if (element.isJsonArray) element.asJsonArray.forEach { visit(it, key) }
-            else if (
-                element.isJsonPrimitive &&
-                    element.asJsonPrimitive.isString &&
-                    ControlJson.redact(element, key).asString == ControlJson.REDACTED
-            )
-                values.add(element.asString)
+            else if (element.isJsonPrimitive && element.asJsonPrimitive.isString) {
+                val text = element.asString
+                if (ControlJson.redact(element, key).asString == ControlJson.REDACTED)
+                    values.add(text)
+                // Custom preference JSON is a string in the full export, but
+                // individual fields appear separately in generated-core logs.
+                if (text.trimStart().startsWith("{") || text.trimStart().startsWith("["))
+                    runCatching { visit(com.google.gson.JsonParser.parseString(text)) }
+            }
         }
         val config = ControlFullConfig.export(ControlStore.capture())
         visit(config)

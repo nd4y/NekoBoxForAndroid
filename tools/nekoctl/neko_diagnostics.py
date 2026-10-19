@@ -12,8 +12,22 @@ from pathlib import Path
 def redact_text(text):
     text = re.sub(r'(?i)(?:https?|socks5?|vless|vmess|trojan)://[^\s"<>]+', '<redacted>', text)
     text = re.sub(r'(?im)(authorization[\s"\':=]+)(?:bearer|basic)?[^\r\n,}]+', r'\1<redacted>', text)
-    text = re.sub(r'(?i)((?:password|passwd|token|secret|private[_-]?key|preshared[_-]?key|setup[_-]?key|uuid)["\']?\s*[:=]\s*)(?:"[^"\r\n]*"|\'[^\'\r\n]*\'|[^\s,}]+)', r'\1<redacted>', text)
+    text = re.sub(r'(?i)((?:password|passwd|token|secret|private[_-]?key|preshared[_-]?key|setup[_-]?key|uuid|path|service[_-]?name)["\']?\s*[:=]\s*)(?:"[^"\r\n]*"|\'[^\'\r\n]*\'|[^\s,}]+)', r'\1<redacted>', text)
     return re.sub(r'(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b', '<redacted>', text)
+
+
+def redact_api_value(value, key=''):
+    """Keep bundle JSON valid; also protect path capabilities from older APKs."""
+    normalized = key.lower().replace('_', '')
+    if normalized.endswith(('path', 'servicename')):
+        return '<redacted>'
+    if isinstance(value, dict):
+        return {k: redact_api_value(v, k) for k, v in value.items()}
+    if isinstance(value, list):
+        return [redact_api_value(v, key) for v in value]
+    if isinstance(value, str):
+        return redact_text(value)
+    return value
 
 
 def system_read(client, args, max_bytes=262144):
@@ -63,7 +77,8 @@ def collect_bundle(client, destination, include_secrets=False, logcat_lines=1000
             code = response.get('error', {}).get('code', 'API_ERROR')
             add(name, error=code if re.fullmatch('[A-Z_]+', str(code)) else 'API_ERROR')
             return None
-        add(name, json.dumps(response, ensure_ascii=False, indent=2) + '\n', redacted=not include_secrets)
+        safe = response if include_secrets else redact_api_value(response)
+        add(name, json.dumps(safe, ensure_ascii=False, indent=2) + '\n', redacted=not include_secrets)
         return response['result']
 
     # Collect scoped OS evidence first, even if starting a provider later fails or hangs.

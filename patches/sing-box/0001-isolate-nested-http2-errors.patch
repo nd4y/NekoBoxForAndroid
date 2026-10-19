@@ -1,0 +1,149 @@
+From ca57fd0155299e2a8de59103a41b621e7db471ab Mon Sep 17 00:00:00 2001
+From: Codex Agent <codex@local.invalid>
+Date: Mon, 19 Oct 2026 10:41:37 +0300
+Subject: [PATCH] fix(xhttp): isolate outer HTTP2 stream errors from nested
+ clients
+
+---
+ transport/v2rayxhttp/conn.go              |  10 +-
+ transport/v2rayxhttp/nested_http2_test.go | 107 ++++++++++++++++++++++
+ 2 files changed, 116 insertions(+), 1 deletion(-)
+ create mode 100644 transport/v2rayxhttp/nested_http2_test.go
+
+diff --git a/transport/v2rayxhttp/conn.go b/transport/v2rayxhttp/conn.go
+index 37a1584..f690685 100644
+--- a/transport/v2rayxhttp/conn.go
++++ b/transport/v2rayxhttp/conn.go
+@@ -84,7 +84,15 @@ func (c *splitConn) Write(b []byte) (int, error) {
+ }
+ 
+ func (c *splitConn) Read(b []byte) (int, error) {
+-	return c.reader.Read(b)
++	n, err := c.reader.Read(b)
++	if err != nil && err != io.EOF {
++		// The outer HTTP/2 body can return StreamError. Exposing that concrete
++		// type as a net.Conn error makes a nested HTTP/2 or gRPC reader treat
++		// it as its own recoverable frame error and spin forever on the body.
++		// Keep the cause for errors.Is/As, but mark this as a transport failure.
++		err = &net.OpError{Op: "read", Net: "xhttp", Source: c.localAddr, Addr: c.remoteAddr, Err: err}
++	}
++	return n, err
+ }
+ 
+ func (c *splitConn) CloseWrite() error {
+diff --git a/transport/v2rayxhttp/nested_http2_test.go b/transport/v2rayxhttp/nested_http2_test.go
+new file mode 100644
+index 0000000..e0ad51b
+--- /dev/null
++++ b/transport/v2rayxhttp/nested_http2_test.go
+@@ -0,0 +1,107 @@
++package xhttp
++
++import (
++	"bytes"
++	"context"
++	"io"
++	"net"
++	"net/http"
++	"sync/atomic"
++	"testing"
++	"time"
++
++	"golang.org/x/net/http2"
++	"google.golang.org/grpc"
++	"google.golang.org/grpc/credentials/insecure"
++)
++
++// A closed outer HTTP/2 body repeats its stream error on subsequent reads.
++// Inner HTTP/2 readers must see a transport failure, not their own StreamError.
++type failedOuterBody struct {
++	initial  *bytes.Reader
++	failed   chan struct{}
++	notified atomic.Bool
++	cleanup  atomic.Bool
++}
++
++func (b *failedOuterBody) Read(p []byte) (int, error) {
++	if b.initial.Len() > 0 {
++		return b.initial.Read(p)
++	}
++	if b.cleanup.Load() {
++		return 0, io.EOF
++	}
++	if b.notified.CompareAndSwap(false, true) {
++		close(b.failed)
++	}
++	return 0, http2.StreamError{StreamID: 111, Code: http2.ErrCodeCancel}
++}
++func (*failedOuterBody) Close() error { return nil }
++
++type discardWriteCloser struct{ io.Writer }
++
++func (discardWriteCloser) Close() error { return nil }
++
++func nestedFailureConn(t *testing.T) (*splitConn, *failedOuterBody) {
++	t.Helper()
++	var settings bytes.Buffer
++	if err := http2.NewFramer(&settings, nil).WriteSettings(); err != nil {
++		t.Fatal(err)
++	}
++	body := &failedOuterBody{initial: bytes.NewReader(settings.Bytes()), failed: make(chan struct{})}
++	t.Cleanup(func() { body.cleanup.Store(true) })
++	return &splitConn{reader: body, writer: discardWriteCloser{io.Discard}, localAddr: &net.TCPAddr{}, remoteAddr: &net.TCPAddr{}}, body
++}
++
++func TestNestedHTTP2OuterFailureTerminatesRequest(t *testing.T) {
++	conn, body := nestedFailureConn(t)
++	cc, err := (&http2.Transport{}).NewClientConn(conn)
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer cc.Close()
++	req, _ := http.NewRequestWithContext(context.Background(), "GET", "https://example.com/", nil)
++	done := make(chan error, 1)
++	go func() { _, err := cc.RoundTrip(req); done <- err }()
++	<-body.failed
++	select {
++	case err := <-done:
++		if err == nil {
++			t.Fatal("outer stream failure accepted")
++		}
++	case <-time.After(time.Second):
++		t.Fatal("inner HTTP/2 request spun on the outer stream error")
++	}
++}
++
++func TestNestedGRPCOuterFailureDoesNotBlockClose(t *testing.T) {
++	conn, body := nestedFailureConn(t)
++	var dialed atomic.Bool
++	cc, err := grpc.NewClient("passthrough:///example.com:443", grpc.WithTransportCredentials(insecure.NewCredentials()),
++		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
++			if dialed.CompareAndSwap(false, true) {
++				return conn, nil
++			}
++			<-ctx.Done()
++			return nil, ctx.Err()
++		}))
++	if err != nil {
++		t.Fatal(err)
++	}
++	cc.Connect()
++	select {
++	case <-body.failed:
++	case <-time.After(time.Second):
++		t.Fatal("outer failure not delivered")
++	}
++	done := make(chan error, 1)
++	go func() { done <- cc.Close() }()
++	select {
++	case err := <-done:
++		if err != nil {
++			t.Fatal(err)
++		}
++	case <-time.After(time.Second):
++		t.Fatal("gRPC Close waits forever for its reader after outer stream failure")
++	}
++}
+-- 
+2.55.0.windows.3
+

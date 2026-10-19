@@ -20,7 +20,7 @@ internal object DiagnosticRedaction {
             }
         result =
             Regex(
-                    "(?i)((?:password|passwd|token|secret|private[_-]?key|preshared[_-]?key|setup[_-]?key|uuid)[\"']?\\s*[:=]\\s*)(?:\"[^\"]*\"|'[^']*'|[^\\s,}]+)"
+                    "(?i)((?:password|passwd|token|secret|private[_-]?key|preshared[_-]?key|setup[_-]?key|uuid|path|service[_-]?name)[\"']?\\s*[:=]\\s*)(?:\"[^\"]*\"|'[^']*'|[^\\s,}]+)"
                 )
                 .replace(result) { it.groupValues[1] + ControlJson.REDACTED }
         result =

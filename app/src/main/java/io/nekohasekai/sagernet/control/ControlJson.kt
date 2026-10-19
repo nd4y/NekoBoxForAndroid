@@ -108,6 +108,10 @@ object ControlJson {
     // hidden.
     fun redact(value: JsonElement, key: String = ""): JsonElement {
         val normalized = key.lowercase().replace("_", "")
+        // Paths and gRPC service names can be bearer capabilities even when
+        // separated from the server URL in generated/custom configuration.
+        if (normalized.endsWith("path") || normalized.endsWith("servicename"))
+            return JsonPrimitive(REDACTED)
         if (
             listOf(
                     "password",

@@ -170,6 +170,14 @@ class ControlPatchTest {
     }
 
     @Test
+    fun generatedAndProfilePathCapabilitiesAreRedacted() {
+        val raw = ControlJson.parseObject("""{"dns":{"path":"/dns-capability"},"wsPath":"/ws-capability","grpcServiceName":"grpc-capability","tag":"visible"}""")
+        val safe = ControlJson.redact(raw).toString()
+        listOf("dns-capability", "ws-capability", "grpc-capability").forEach { assertFalse(safe.contains(it)) }
+        assertTrue(safe.contains("visible"))
+    }
+
+    @Test
     fun generatedTagsRejectMissingDetourAndCycles() {
         rejects("MISSING_DETOUR") {
             ControlValidation.checkTags(

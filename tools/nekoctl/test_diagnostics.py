@@ -27,6 +27,28 @@ def fake_system(client, args, **kwargs):
 
 class DiagnosticTests(unittest.TestCase):
     @patch('neko_diagnostics.system_read', side_effect=fake_system)
+    def test_legacy_api_paths_and_log_paths_are_masked_in_valid_bundle_json(self, _read):
+        for include_secrets in (False, True):
+            client = FakeClient()
+            original = client.request
+            def request(method, params=None):
+                response = original(method, params)
+                response['result'].update(path='/opaque-dns-capability',
+                    grpcServiceName='grpc-capability',
+                    text='dns failed {"path":"/log-capability"}\n at Test.call(Test.kt:42)')
+                return response
+            client.request = request
+            with tempfile.TemporaryDirectory() as directory:
+                file = Path(directory) / 'bundle.zip'
+                self.assertTrue(collect_bundle(client, file, include_secrets=include_secrets)['complete'])
+                with zipfile.ZipFile(file) as bundle:
+                    result = json.loads(bundle.read('generated.json'))['result']
+                    text = json.dumps(result)
+                    for value in ('opaque-dns-capability', 'grpc-capability', 'log-capability'):
+                        self.assertEqual(include_secrets, value in text)
+                    self.assertIn('Test.kt:42', text)
+
+    @patch('neko_diagnostics.system_read', side_effect=fake_system)
     def test_bundle_reads_netbird_snapshots_without_starting_probes(self, _read):
         client = FakeClient()
         original = client.request

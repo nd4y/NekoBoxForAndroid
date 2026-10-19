@@ -78,6 +78,16 @@ class DiagnosticTailTest {
     }
 
     @Test
+    fun generatedLogPathsAreMaskedWithoutRemovingStackFrames() {
+        val raw = """dns: timeout {"path":"/opaque-capability/dns-query","service_name":"hidden-grpc-service"}
+ at example.Test.call(Test.kt:42)"""
+        val safe = DiagnosticRedaction.redact(raw)
+        assertFalse(safe.contains("opaque-capability"))
+        assertFalse(safe.contains("hidden-grpc-service"))
+        assertTrue(safe.contains("Test.kt:42"))
+    }
+
+    @Test
     fun cursorsNeverSplitUtf8AcrossChunks() {
         val f = Files.createTempFile("neko-utf8", ".txt").toFile()
         try {
