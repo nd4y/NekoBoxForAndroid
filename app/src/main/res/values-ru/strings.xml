@@ -1020,4 +1020,5 @@
     <string name="netbird_connections">Подключение и маршрутизация сетей</string>
     <string name="netbird_connections_summary">Изменить внешний профиль или группу VLESS, правила для доменов и сетей IPv4.</string>
     <string name="netbird_save_first">Сначала сохраните изменения профиля.</string>
+    <string name="vpn_recovery_wait">Повторное подключение через %1$d с</string>
 </resources>

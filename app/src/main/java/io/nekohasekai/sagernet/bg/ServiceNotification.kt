@@ -156,7 +156,9 @@ class ServiceNotification(
 
             val closeAction = NotificationCompat.Action.Builder(
                 0, service.getText(R.string.stop), PendingIntent.getBroadcast(
-                    service, 0, Intent(Action.CLOSE).setPackage(service.packageName), flags
+                    service, 0, Intent(Action.CLOSE).setPackage(service.packageName)
+                        .putExtra(VpnIntentStore.EXTRA_GENERATION, VpnIntentStore.token()),
+                    flags or PendingIntent.FLAG_UPDATE_CURRENT
                 )
             ).setShowsUserInterface(false).build()
             it.addAction(closeAction)

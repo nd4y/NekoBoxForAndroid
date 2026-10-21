@@ -214,15 +214,25 @@ class SagerNet : Application(),
             }
         }
 
-        fun startService() = ContextCompat.startForegroundService(
-            application, Intent(application, SagerConnection.serviceClass)
-        )
+        fun startService() {
+            val token = io.nekohasekai.sagernet.bg.VpnIntentStore.request(true)
+            io.nekohasekai.sagernet.bg.VpnRecoveryWatchdog.schedule(application)
+            ContextCompat.startForegroundService(
+                application, Intent(application, SagerConnection.serviceClass)
+                    .putExtra(io.nekohasekai.sagernet.bg.VpnIntentStore.EXTRA_GENERATION, token)
+            )
+        }
 
         fun reloadService() =
             application.sendBroadcast(Intent(Action.RELOAD).setPackage(application.packageName))
 
-        fun stopService() =
-            application.sendBroadcast(Intent(Action.CLOSE).setPackage(application.packageName))
+        fun stopService() {
+            // Persist before queuing the broadcast, fencing any pending retry.
+            val token = io.nekohasekai.sagernet.bg.VpnIntentStore.request(false)
+            io.nekohasekai.sagernet.bg.VpnRecoveryWatchdog.cancel(application)
+            application.sendBroadcast(Intent(Action.CLOSE).setPackage(application.packageName)
+                .putExtra(io.nekohasekai.sagernet.bg.VpnIntentStore.EXTRA_GENERATION, token))
+        }
 
         @Volatile var underlyingNetwork: Network? = null
 

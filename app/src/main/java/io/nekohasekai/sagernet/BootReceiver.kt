@@ -38,7 +38,7 @@ class BootReceiver : BroadcastReceiver() {
                 selectedProxy = DataStore.selectedProxy,
                 sdkInt = Build.VERSION.SDK_INT,
                 userUnlocked = SagerNet.user.isUserUnlocked,
-            )
+            ) && io.nekohasekai.sagernet.bg.VpnIntentStore.token() >= 0
         ) {
             SagerNet.startService()
         }

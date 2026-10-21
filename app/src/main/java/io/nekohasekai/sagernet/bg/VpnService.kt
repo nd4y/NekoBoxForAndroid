@@ -32,6 +32,8 @@ class VpnService : BaseVpnService(),
     }
 
     var conn: ParcelFileDescriptor? = null
+    private var tunConfig: String? = null
+    private var tunRevision: String? = null
 
     private var metered = false
 
@@ -53,8 +55,19 @@ class VpnService : BaseVpnService(),
     @Suppress("EXPERIMENTAL_API_USAGE")
     override fun killProcesses() {
         super.killProcesses()
+        if (!data.holdTunDuringRecovery) {
+            releaseRetainedResources()
+        } else if (conn?.fileDescriptor?.valid() == true) {
+            io.nekohasekai.sagernet.control.ControlDiagnostics.event("vpn.tun.retained")
+        }
+    }
+
+    override fun releaseRetainedResources() {
+        if (conn != null) io.nekohasekai.sagernet.control.ControlDiagnostics.event("vpn.tun.closed")
         conn?.close()
         conn = null
+        tunConfig = null
+        tunRevision = null
     }
 
     override fun onBind(intent: Intent) = when (intent.action) {
@@ -68,6 +81,7 @@ class VpnService : BaseVpnService(),
         ServiceNotification(this, profileName, "service-vpn")
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (startId > 0) data.lastStartId = startId
         if (DataStore.serviceMode == Key.MODE_VPN) {
             if (prepare(this) != null) {
                 startActivity(
@@ -87,6 +101,18 @@ class VpnService : BaseVpnService(),
     }
 
     fun startVpn(tunOptionsJson: String, tunPlatformOptionsJson: String): Int {
+        val signature = VpnTunReusePolicy.signature(tunOptionsJson, tunPlatformOptionsJson)
+        val revision = data.proxy?.configurationRevision
+        val retained = conn
+        if (VpnTunReusePolicy.canReuse(data.holdTunDuringRecovery,
+                tunRevision, revision, tunConfig, signature, retained?.fileDescriptor?.valid() == true)) {
+            updateUnderlyingNetwork()
+            io.nekohasekai.sagernet.control.ControlDiagnostics.event("vpn.tun.reused")
+            return retained!!.fd
+        }
+        retained?.close()
+        conn = null
+
 //        Logs.d(tunOptionsJson)
 //        Logs.d(tunPlatformOptionsJson)
 //        val tunOptions = JSONObject(tunOptionsJson)
@@ -207,7 +233,9 @@ class VpnService : BaseVpnService(),
         metered = DataStore.meteredNetwork
         if (Build.VERSION.SDK_INT >= 29) builder.setMetered(metered)
         conn = builder.establish() ?: throw NullConnectionException()
-
+        tunConfig = signature
+        tunRevision = revision
+        io.nekohasekai.sagernet.control.ControlDiagnostics.event("vpn.tun.established")
         return conn!!.fd
     }
 
@@ -228,6 +256,7 @@ class VpnService : BaseVpnService(),
     override fun onRevoke() = stopRunner()
 
     override fun onDestroy() {
+        releaseRetainedResources()
         DataStore.vpnService = null
         super.onDestroy()
         data.binder.close()

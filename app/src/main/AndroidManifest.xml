@@ -346,6 +346,10 @@
             android:process=":bg"
             tools:ignore="ForegroundServicePermission" />
 
+        <receiver
+            android:name="io.nekohasekai.sagernet.bg.VpnRecoveryReceiver"
+            android:exported="false" />
+
         <service
             android:name="io.nekohasekai.sagernet.bg.VpnService"
             android:exported="false"
