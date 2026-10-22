@@ -59,8 +59,10 @@ the corrected test source.
   on three samples; RU/foreign HTTPS and DNS worked and VPN stayed Connected. The
   initial probe retained exception type only. An enhanced private diagnostic probe
   subsequently passed on Wi-Fi and LTE, followed by the two successful round trips.
-  The initial TLS cause was not established and no TLS verification was weakened.
-  This is not evidence of zero transient network errors or a TLS root-cause fix.
+  Follow-up origin logs and scheduled-backup evidence established that the HTTPS
+  origin was intentionally stopped during the retained failing samples. This is
+  resolved as origin unavailability; see HOME_TLS_VERIFICATION.md for 48 successful
+  current-profile checks. Certificate verification was not weakened.
 - USB disappeared during the first watchdog observation; that observation was
   inconclusive. The repeated test used wireless ADB after verifying the physical
   phone identity. A different process appeared before Control API polling; the
@@ -80,6 +82,8 @@ the corrected test source.
   removed. VPN was left Connected with desired intent On; Wi-Fi was enabled.
 - Raw logs, private configurations, endpoints and peer identity remain outside Git.
 
-This is a regression checkpoint, not unconditional final acceptance. Keep the
-release preliminary while the initial TLS observation remains unresolved. No additional application/native change is included in this
-verification/test follow-up.
+The two blocking observations are resolved: the owner confirmed manual selection
+and origin evidence explains the home TLS outage. The documented regression matrix
+is accepted within its stated scope; see HOME_TLS_VERIFICATION.md. Dashboard rotation
+and inexact watchdog timing limits remain. No application/native change is included
+in this follow-up; release promotion is separate from the runtime result.
