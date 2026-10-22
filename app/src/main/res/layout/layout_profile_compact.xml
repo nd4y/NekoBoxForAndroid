@@ -154,7 +154,7 @@
                         android:layout_height="wrap_content"
                         android:textAppearance="?android:textAppearanceSmall"
                         android:textColor="?accentOrTextSecondary"
-                        android:textSize="10.0sp" />
+                        android:textSize="11sp" />
 
                     <TextView
                         android:id="@id/profile_status"
@@ -165,7 +165,7 @@
                         android:singleLine="true"
                         android:textAppearance="?android:textAppearanceSmall"
                         android:textColor="?accentOrTextSecondary"
-                        android:textSize="10.0sp" />
+                        android:textSize="11sp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -184,7 +184,7 @@
                         android:text="@string/server_address"
                         android:textAppearance="?android:textAppearanceSmall"
                         android:textColor="?colorPrimary"
-                        android:textSize="10.0sp" />
+                        android:textSize="11sp" />
 
                     <TextView
                         android:id="@id/traffic_text"
@@ -194,7 +194,7 @@
                         android:text="@string/traffic"
                         android:textAppearance="?android:textAppearanceSmall"
                         android:textColor="?colorPrimary"
-                        android:textSize="10.0sp" />
+                        android:textSize="11sp" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

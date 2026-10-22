@@ -58,7 +58,12 @@ class SagerNet : Application(),
     override fun onCreate() {
         super.onCreate()
 
-        Thread.setDefaultUncaughtExceptionHandler(CrashHandler)
+        val existingHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler(
+            io.nekohasekai.sagernet.utils.DelegatingExceptionHandler(existingHandler) { thread, error ->
+                CrashHandler.uncaughtException(thread, error)
+            }
+        )
 
         if (isMainProcess || isBgProcess) {
             externalAssets.mkdirs()
@@ -161,7 +166,7 @@ class SagerNet : Application(),
                     Intent(
                         application, MainActivity::class.java
                     ).setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+                    PendingIntent.FLAG_IMMUTABLE
                 )
             }
         }

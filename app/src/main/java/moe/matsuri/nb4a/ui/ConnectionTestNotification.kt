@@ -11,7 +11,8 @@ import io.nekohasekai.sagernet.ktx.Logs
 import io.nekohasekai.sagernet.ui.ConnectionTestNotificationActionActivity
 import io.nekohasekai.sagernet.ui.MainActivity
 
-class ConnectionTestNotification(val context: Context, val title: String) {
+class ConnectionTestNotification(context: Context, val title: String) {
+    private val context: android.app.Application = context.applicationContext as android.app.Application
     companion object {
         const val ACTION_CANCEL = "io.nekohasekai.sagernet.action.CANCEL_CONNECTION_TEST"
         private const val CHANNEL_ID = "connection-test"
@@ -31,7 +32,7 @@ class ConnectionTestNotification(val context: Context, val title: String) {
                         Intent.FLAG_ACTIVITY_SINGLE_TOP,
             )
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+                PendingIntent.FLAG_IMMUTABLE
         return PendingIntent.getActivity(context, NOTIFICATION_ID + 1, intent, flags)
     }
 
@@ -44,7 +45,7 @@ class ConnectionTestNotification(val context: Context, val title: String) {
                         Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS,
             )
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+                PendingIntent.FLAG_IMMUTABLE
         return PendingIntent.getActivity(context, NOTIFICATION_ID + 2, intent, flags)
     }
 

@@ -1,5 +1,7 @@
 package io.nekohasekai.sagernet.ui
 
+import androidx.core.view.get
+import androidx.core.view.size
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -80,8 +82,8 @@ abstract class ThemedActivity : AppCompatActivity {
             setTitleTextColor(contentColor)
             navigationIcon?.setTint(contentColor)
             overflowIcon?.setTint(contentColor)
-            for (index in 0 until menu.size()) {
-                menu.getItem(index).icon?.setTint(contentColor)
+            for (index in 0 until menu.size) {
+                menu[index].icon?.setTint(contentColor)
             }
         }
     }

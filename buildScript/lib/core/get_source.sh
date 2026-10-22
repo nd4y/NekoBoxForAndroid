@@ -45,7 +45,7 @@ apply_patches() {
   done
 }
 
-checkout_source sing-box https://github.com/AlwaysBusyStack/sing-box.git "$COMMIT_SING_BOX"
+checkout_source sing-box https://github.com/nd4y/sing-box.git "$COMMIT_SING_BOX"
 checkout_source libneko https://github.com/matsuridayo/libneko.git "$COMMIT_LIBNEKO"
 checkout_source amneziawg-go https://github.com/amnezia-vpn/amneziawg-go.git "$COMMIT_AMNEZIAWG"
 checkout_source net https://github.com/golang/net.git "$COMMIT_X_NET"

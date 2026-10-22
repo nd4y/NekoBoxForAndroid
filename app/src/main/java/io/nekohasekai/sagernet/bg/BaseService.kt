@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.bg
 
+import androidx.core.content.ContextCompat
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -21,7 +22,17 @@ import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.plugin.PluginManager
 import io.nekohasekai.sagernet.utils.DefaultNetworkListener
-import kotlinx.coroutines.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.cancel as cancelScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import libcore.Libcore
@@ -67,22 +78,20 @@ class BaseService {
                 // Action.SWITCH_WAKE_LOCK -> runOnDefaultDispatcher { service.switchWakeLock() }
                 PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED,
                 CoreIdlePolicy.WHITELIST_CHANGED -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        val action = CoreIdlePolicy.action(
-                            SagerNet.power.isDeviceIdleMode,
-                            SagerNet.power.isIgnoringBatteryOptimizations(SagerNet.application.packageName),
-                            intent.action == PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED,
-                        )
-                        when (action) {
-                            CoreIdlePolicy.Action.Sleep -> proxy?.box?.sleep()
-                            CoreIdlePolicy.Action.Wake -> proxy?.box?.wake()
-                            CoreIdlePolicy.Action.WakeAndRecover -> {
-                                proxy?.box?.wake()
-                                service.handleConnectionRecovery(
-                                    reconnect = DataStore.wakeReconnect,
-                                    reset = DataStore.wakeResetConnections
-                                )
-                            }
+                    val action = CoreIdlePolicy.action(
+                        SagerNet.power.isDeviceIdleMode,
+                        SagerNet.power.isIgnoringBatteryOptimizations(SagerNet.application.packageName),
+                        intent.action == PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED,
+                    )
+                    when (action) {
+                        CoreIdlePolicy.Action.Sleep -> proxy?.box?.sleep()
+                        CoreIdlePolicy.Action.Wake -> proxy?.box?.wake()
+                        CoreIdlePolicy.Action.WakeAndRecover -> {
+                            proxy?.box?.wake()
+                            service.handleConnectionRecovery(
+                                reconnect = DataStore.wakeReconnect,
+                                reset = DataStore.wakeResetConnections
+                            )
                         }
                     }
                 }
@@ -237,7 +246,7 @@ class BaseService {
 
         override fun close() {
             callbacks.kill()
-            cancel()
+            cancelScope()
             data = null
         }
     }
@@ -647,28 +656,14 @@ class BaseService {
                     addAction(Intent.ACTION_SHUTDOWN)
                     addAction(Action.CLOSE)
                     // addAction(Action.SWITCH_WAKE_LOCK)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
-                        addAction(CoreIdlePolicy.WHITELIST_CHANGED)
-                    }
+                    addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
+                    addAction(CoreIdlePolicy.WHITELIST_CHANGED)
                     addAction(Action.RESET_UPSTREAM_CONNECTIONS)
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    registerReceiver(
-                        data.receiver,
-                        filter,
-                        "$packageName.SERVICE",
-                        null,
-                        Context.RECEIVER_EXPORTED
-                    )
-                } else {
-                    registerReceiver(
-                        data.receiver,
-                        filter,
-                        "$packageName.SERVICE",
-                        null
-                    )
-                }
+                ContextCompat.registerReceiver(
+                    this as Context, data.receiver, filter,
+                    "$packageName.SERVICE", null, ContextCompat.RECEIVER_EXPORTED,
+                )
                 data.closeReceiverRegistered = true
             }
 

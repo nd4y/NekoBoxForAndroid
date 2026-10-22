@@ -5,8 +5,10 @@
 
     <uses-sdk tools:overrideLibrary="com.google.zxing.client.android, com.blacksquircle.ui.editorkit" />
 
+    <!-- Gradle expands applicationId; distinct variants must retain unique signature permissions. -->
     <permission
         android:name="${applicationId}.SERVICE"
+        tools:ignore="PermissionNamingConvention"
         android:protectionLevel="signature" />
 
     <uses-permission android:name="${applicationId}.SERVICE" />
@@ -27,7 +29,7 @@
 
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="PackageVisibilityPolicy" />
+        tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
     <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
 
     <uses-permission android:name="android.permission.CAMERA" />
@@ -46,6 +48,9 @@
         android:name="android.hardware.camera.autofocus"
         android:required="false" />
 
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
     <queries>
         <intent>
             <action android:name="io.nekohasekai.sagernet.plugin.ACTION_NATIVE_PLUGIN" />
@@ -55,7 +60,6 @@
     <application
         android:name="io.nekohasekai.sagernet.SagerNet"
         android:allowBackup="true"
-        android:autoRevokePermissions="allowed"
         android:banner="@mipmap/ic_launcher"
         android:dataExtractionRules="@xml/backup_rules"
         android:fullBackupContent="@xml/backup_descriptor"

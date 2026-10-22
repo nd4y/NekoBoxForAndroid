@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.ui
 
+import java.lang.ref.WeakReference
 import android.content.DialogInterface
 import android.os.SystemClock
 import android.text.SpannableStringBuilder
@@ -62,7 +63,10 @@ object GroupConnectionTestController {
     private var mainJob: Job? = null
     private var notification: ConnectionTestNotification? = null
     private var dialog: AlertDialog? = null
-    private var binding: LayoutProgressListBinding? = null
+    private var bindingRoot = WeakReference<android.view.View>(null)
+    private var binding: LayoutProgressListBinding?
+        get() = bindingRoot.get()?.let(LayoutProgressListBinding::bind)
+        set(value) { bindingRoot = WeakReference(value?.root) }
     private var lastProfile: ProxyEntity? = null
     private var proxyN = 0
     private var groupId = 0L

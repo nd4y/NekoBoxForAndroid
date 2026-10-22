@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.widget
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.net.Uri
 import android.util.AttributeSet
@@ -37,7 +38,7 @@ constructor(
                 }
 
                 try {
-                    if (Uri.parse(link.toString()).scheme == "content") {
+                    if (link.toString().toUri().scheme == "content") {
                         linkLayout.isErrorEnabled = false
                         return
                     }

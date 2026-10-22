@@ -1,6 +1,8 @@
 package moe.matsuri.nb4a.ui
 
+import io.nekohasekai.sagernet.R
 import android.app.Dialog
+import android.widget.EditText
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.preference.EditTextPreference
@@ -32,6 +34,11 @@ class MaterialEditTextPreferenceDialogFragment : EditTextPreferenceDialogFragmen
         val contentView = onCreateDialogView(requireContext())
         if (contentView != null) {
             onBindDialogView(contentView)
+            contentView.findViewById<EditText>(android.R.id.edit)?.apply {
+                if (hint.isNullOrBlank() || hint == getString(R.string.preference_value_hint)) {
+                    hint = preference.dialogTitle ?: preference.title
+                }
+            }
             builder.setView(contentView)
         } else {
             builder.setMessage(preference.dialogMessage)

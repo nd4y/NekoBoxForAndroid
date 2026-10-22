@@ -1,5 +1,6 @@
 package moe.matsuri.nb4a.utils
 
+import androidx.core.net.toUri
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -180,7 +181,7 @@ object NGUtil {
     }
 
     fun openUri(context: Context, uriString: String) {
-        val uri = Uri.parse(uriString)
+        val uri = uriString.toUri()
         context.startActivity(Intent(Intent.ACTION_VIEW, uri))
     }
 

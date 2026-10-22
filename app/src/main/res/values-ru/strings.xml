@@ -461,7 +461,7 @@
     <string name="route_rules_official">Официальный</string>
     <string name="route_rules_provider">Источник правил</string>
     <string name="route_asset_crc32">CRC32: %s</string>
-    <string name="route_asset_crc32_pending">вычисляется...</string>
+    <string name="route_asset_crc32_pending">вычисляется…</string>
     <string name="throne_rule_sets">Throne Rule Sets</string>
     <string name="itdog_rule_sets">ITDog Rule Sets</string>
     <string name="route_warn">Перед добавлением своих правил прочитайте документацию, иначе интернет может не работать.</string>
@@ -688,7 +688,7 @@
     <string name="webdav_path">Путь резервной копии</string>
     <string name="webdav_test">Проверить подключение</string>
     <string name="webdav_test_success">Подключение успешно</string>
-    <string name="webdav_test_failed" formatted="false">Подключение не удалось: %s</string>
+    <string name="webdav_test_failed">Подключение не удалось: %s</string>
     <string name="webdav_backup_success">Копия WebDAV создана</string>
     <string name="webdav_backup_failed">Копия WebDAV не создана: %s</string>
     <string name="webdav_restore_success">Восстановлено из WebDAV</string>
@@ -801,7 +801,7 @@
     <string name="strict_route">Строгий маршрут</string>
     <string name="translate_platform">Платформа перевода</string>
     <string name="vless_encryption">Шифрование VLESS</string>
-    <string name="vless_encryption_hint">mlkem768x25519plus.native.0rtt.KEY1.KEY2...</string>
+    <string name="vless_encryption_hint">mlkem768x25519plus.native.0rtt.KEY1.KEY2…</string>
     <string name="xhttp_settings">Настройки XHTTP</string>
     <string name="xhttp_host">Хост XHTTP</string>
     <string name="xhttp_path">Путь XHTTP</string>
@@ -962,12 +962,12 @@
     <string name="core_not_started_yet">Ядро ещё не запущено</string>
     <string name="core_profiler_no_snapshot">Снапшот профайлера ещё не собран</string>
     <string name="core_profiler_no_data">Нет данных</string>
-    <string name="core_profiler_collecting">Сбор данных...</string>
+    <string name="core_profiler_collecting">Сбор данных…</string>
     <string name="core_profiler_data_size">Размер данных: %sМб</string>
     <string name="core_profiler_snapshot_saved">Снапшот профайлера экспортирован</string>
     <string name="core_profiler_snapshot_deleted">Снапшот профайлера удалён</string>
     <string name="core_profiler_failed">Ошибка профайлера: %s</string>
-    <string name="core_profiler_saving">Сохранение...</string>
+    <string name="core_profiler_saving">Сохранение…</string>
     <string name="ech">ECH</string>
     <string name="ech_query_server_name">Имя сервера для запроса</string>
     <string name="health_check">Проверка работоспособности</string>
@@ -1021,4 +1021,5 @@
     <string name="netbird_connections_summary">Изменить внешний профиль или группу VLESS, правила для доменов и сетей IPv4.</string>
     <string name="netbird_save_first">Сначала сохраните изменения профиля.</string>
     <string name="vpn_recovery_wait">Повторное подключение через %1$d с</string>
+    <string name="preference_value_hint">Значение</string>
 </resources>

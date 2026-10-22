@@ -1,5 +1,7 @@
 package io.nekohasekai.sagernet.widget
 
+import androidx.core.graphics.set
+import androidx.core.graphics.createBitmap
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Bundle
@@ -84,9 +86,9 @@ class QRCodeDialog() : DialogFragment() {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
                 )
-                setImageBitmap(Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565).apply {
+                setImageBitmap(createBitmap(size, size, Bitmap.Config.RGB_565).apply {
                     for (x in 0 until size) for (y in 0 until size) {
-                        setPixel(x, y, if (qrBits.get(x, y)) Color.BLACK else Color.WHITE)
+                        this[x, y] = if (qrBits.get(x, y)) Color.BLACK else Color.WHITE
                     }
                 })
             })

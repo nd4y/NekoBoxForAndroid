@@ -209,9 +209,8 @@ object ControlDiagnostics {
             "power" to mapOf(
                 "interactive" to SagerNet.power.isInteractive,
                 "powerSaveMode" to SagerNet.power.isPowerSaveMode,
-                "deviceIdle" to if (Build.VERSION.SDK_INT >= 23) SagerNet.power.isDeviceIdleMode else null,
-                "batteryOptimizationExempt" to if (Build.VERSION.SDK_INT >= 23)
-                    SagerNet.power.isIgnoringBatteryOptimizations(BuildConfig.APPLICATION_ID) else null,
+                "deviceIdle" to SagerNet.power.isDeviceIdleMode,
+                "batteryOptimizationExempt" to SagerNet.power.isIgnoringBatteryOptimizations(BuildConfig.APPLICATION_ID),
             ),
             "exits" to exits,
             "threads" to threads,

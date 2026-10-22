@@ -108,7 +108,11 @@ object SubscriptionUpdater {
                         R.string.subscription_update_message, profile.displayName()
                     )
                 )
-                nm.notify(2, notification.build())
+                try {
+                    nm.notify(2, notification.build())
+                } catch (_: SecurityException) {
+                    Logs.w("Subscription notification permission unavailable")
+                }
 
                 GroupUpdater.executeUpdate(profile, false)
             }

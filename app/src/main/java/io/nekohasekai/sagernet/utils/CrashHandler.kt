@@ -36,9 +36,6 @@ object CrashHandler : Thread.UncaughtExceptionHandler {
         } catch (e: Exception) {
         }
 
-        ProcessPhoenix.triggerRebirth(app, Intent(app, BlankActivity::class.java).apply {
-            putExtra("sendLog", "NB4A Crash")
-        })
     }
 
     fun formatThrowable(throwable: Throwable): String {

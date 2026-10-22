@@ -1,5 +1,6 @@
   package io.nekohasekai.sagernet.ktx
 
+import androidx.core.net.toUri
 import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
@@ -23,7 +24,7 @@ fun Context.launchCustomTab(link: String) {
         )
     }.build().apply {
         if (intent.resolveActivity(packageManager) != null) {
-            launchUrl(this@launchCustomTab, Uri.parse(link))
+            launchUrl(this@launchCustomTab, link.toUri())
         }
     }
 }

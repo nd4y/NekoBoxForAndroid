@@ -473,7 +473,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             if (e.link.startsWith("sn://")) {
                                 (requireActivity() as MainActivity).importSubscription(e.link.toUri())
                             } else {
-                                val subscriptionLink = Uri.parse(e.link).getQueryParameter("url") ?: e.link
+                                val subscriptionLink = e.link.toUri().getQueryParameter("url") ?: e.link
 
                                 val group = ProxyGroup(type = GroupType.SUBSCRIPTION)
                                 val subscription = SubscriptionBean()

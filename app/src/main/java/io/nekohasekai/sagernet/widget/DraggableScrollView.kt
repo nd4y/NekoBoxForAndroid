@@ -108,12 +108,18 @@ class DraggableScrollView @JvmOverloads constructor(
                         draggingScrollbar = false
                         parent?.requestDisallowInterceptTouchEvent(false)
                         invalidate()
+                        if (ev.actionMasked == MotionEvent.ACTION_UP) performClick()
                         return true
                     }
                 }
             }
         }
         return super.onTouchEvent(ev)
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
     }
 
     private fun isInScrollbarTouchTarget(x: Float): Boolean {
