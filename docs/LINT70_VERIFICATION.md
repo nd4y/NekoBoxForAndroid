@@ -70,8 +70,9 @@ the corrected test source.
 - During later tests, the selected profile changed from the route-selection profile
   used in the accepted radio tests to a preexisting provider profile. Manual profile
   contents, preferences and routing rules remain identical to the checkpoint. The
-  source of this selection change is unconfirmed; the owner was asked whether it
-  was manual. The current selection was preserved pending that answer.
+  owner confirmed on 2026-10-22 that this selection change was manual and requested
+  keeping the current selection. This observation is resolved; no profile rollback
+  or device configuration change was made.
 - Dashboard rotation was attempted but the device was locked; no rotation result
   is claimed. The Connect button and tile tests were performed while unlocked.
 - Temporary charging-screen behavior was restored to its original value. Test DNS
@@ -80,6 +81,5 @@ the corrected test source.
 - Raw logs, private configurations, endpoints and peer identity remain outside Git.
 
 This is a regression checkpoint, not unconditional final acceptance. Keep the
-release preliminary while the selected-profile change and initial TLS observation
-remain unresolved. No additional application/native change is included in this
+release preliminary while the initial TLS observation remains unresolved. No additional application/native change is included in this
 verification/test follow-up.
