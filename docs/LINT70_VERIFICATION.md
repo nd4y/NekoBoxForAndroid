@@ -21,8 +21,65 @@ Legacy compiler deprecation warnings are outside the original 131 lint findings.
 See LINT_REVIEW.md for 92 fixes and 39 individually scoped exceptions, including
 32 dependency recommendations retained with the owner's approval.
 
-## Physical device acceptance
+## Pixel physical regression checkpoint (2026-10-22)
 
-Pending first update through Obtainium and the subsequent Pixel test run. This
-build checkpoint is not evidence of completed physical-device acceptance. Private
-configuration backups and raw device diagnostics are kept outside the repository.
+The main APK was installed through Obtainium and Android's package installer,
+not adb install. Installed SHA-256 and signing certificate match the candidate.
+The protected preinstall configuration and NetBird identity were unchanged after
+installation. Only the separate instrumentation package was installed using ADB.
+
+| Check | Observed result |
+| --- | --- |
+| Android instrumentation | 4 intent-journal tests and 1 MasterDNS Parcel test passed |
+| Startup failures | 2 injected failures recovered, existing TUN reused |
+| Stop while retry pending | Remained Off, pending retry did not undo Stop |
+| Rapid Stop/Connect | 3 cycles, newest intent retained |
+| Actual uncaught Java exception | OS recreated process, diagnostics captured, Connected in 18.41 s |
+| VPN process SIGKILL | Autonomous recovery in 33.17 s |
+| Main and VPN process SIGKILL | Autonomous recovery in 24.16 s |
+| Wi-Fi/LTE | 2 complete round trips; all 4 final phases passed on first attempt |
+| Network checks per phase | 5 DNS checks and 3 trusted HTTPS checks through actual VPN route |
+| Radio state journal | No Stopped transition during the accepted round trips |
+| WireGuard DNS failure | VPN stayed Connected, other RU/foreign HTTPS routes worked |
+| WireGuard DNS restored | Tunnel recovered without VPN restart |
+| Watchdog safety net | Recovery event and Connected confirmed without vpn.start; 189.42 s after OS service removal |
+| UI Connect/Stop and quick-settings tile | Start/Stop passed; temporary tile removed |
+
+The first version of the new Parcel test incorrectly expected generic host/port
+fields in MasterDNS's existing protocol-specific serialization. The corrected test
+checks domains, resolvers, packet duplication, name and serialized bytes instead.
+Only test code changed; the published application APK and storage format did not.
+The corrected test APK was rebuilt on build-01; lint again reported zero findings,
+and all five device tests passed. All 6,947 source hashes were checked again with
+the corrected test source.
+
+## Observations and limits
+
+- The initial LTE attempt reported SSLHandshakeException for the home HTTPS target
+  on three samples; RU/foreign HTTPS and DNS worked and VPN stayed Connected. The
+  initial probe retained exception type only. An enhanced private diagnostic probe
+  subsequently passed on Wi-Fi and LTE, followed by the two successful round trips.
+  The initial TLS cause was not established and no TLS verification was weakened.
+  This is not evidence of zero transient network errors or a TLS root-cause fix.
+- USB disappeared during the first watchdog observation; that observation was
+  inconclusive. The repeated test used wireless ADB after verifying the physical
+  phone identity. A different process appeared before Control API polling; the
+  watchdog recovery event preceded Connected, with no VPN-start command. The test's
+  initial 90-second post-process polling budget was shorter than actual recovery;
+  later events and status establish the 189.42-second result, not a bounded SLA.
+- During later tests, the selected profile changed from the route-selection profile
+  used in the accepted radio tests to a preexisting provider profile. Manual profile
+  contents, preferences and routing rules remain identical to the checkpoint. The
+  source of this selection change is unconfirmed; the owner was asked whether it
+  was manual. The current selection was preserved pending that answer.
+- Dashboard rotation was attempted but the device was locked; no rotation result
+  is claimed. The Connect button and tile tests were performed while unlocked.
+- Temporary charging-screen behavior was restored to its original value. Test DNS
+  overrides, failure injections, temporary files and instrumentation package were
+  removed. VPN was left Connected with desired intent On; Wi-Fi was enabled.
+- Raw logs, private configurations, endpoints and peer identity remain outside Git.
+
+This is a regression checkpoint, not unconditional final acceptance. Keep the
+release preliminary while the selected-profile change and initial TLS observation
+remain unresolved. No additional application/native change is included in this
+verification/test follow-up.

@@ -12,8 +12,9 @@ class MasterDnsParcelDeviceTest {
     @Test fun parcelRoundTripUsesConcreteCreator() {
         val source = MasterDnsVPNBean().apply {
             initializeDefaultValues()
-            serverAddress = "192.0.2.1"
-            serverPort = 443
+            domains = "tunnel.example.invalid"
+            resolvers = "192.0.2.53"
+            packetDuplicationCount = 3
             name = "synthetic parcel test"
         }
         val parcel = Parcel.obtain()
@@ -21,8 +22,9 @@ class MasterDnsParcelDeviceTest {
             source.writeToParcel(parcel, 0)
             parcel.setDataPosition(0)
             val restored = MasterDnsVPNBean.CREATOR.createFromParcel(parcel)
-            assertEquals(source.serverAddress, restored.serverAddress)
-            assertEquals(source.serverPort, restored.serverPort)
+            assertEquals(source.domains, restored.domains)
+            assertEquals(source.resolvers, restored.resolvers)
+            assertEquals(source.packetDuplicationCount, restored.packetDuplicationCount)
             assertEquals(source.name, restored.name)
             assertArrayEquals(KryoConverters.serialize(source), KryoConverters.serialize(restored))
             assertEquals(2, MasterDnsVPNBean.CREATOR.newArray(2).size)
