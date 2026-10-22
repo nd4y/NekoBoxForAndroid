@@ -52,16 +52,7 @@
         <item>XHTTP</item>
     </string-array>
 
-    <string-array name="kcp_headers_entry">
-        <item>@string/none</item>
-        <item>SRTP</item>
-        <item>uTP</item>
-        <item>WeChat Video</item>
-        <item>DTLS</item>
-        <item>WireGuard</item>
-    </string-array>
-
-    <string-array name="xhttp_mode_entry">
+<string-array name="xhttp_mode_entry">
         <item>Авто</item>
         <item>Packet UP</item>
         <item>Stream UP</item>

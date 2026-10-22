@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.database
 
+import io.nekohasekai.sagernet.control.ControlAccess
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
@@ -18,7 +19,7 @@ import kotlinx.coroutines.launch
 
 @Database(
     entities = [ProxyGroup::class, ProxyEntity::class, RuleEntity::class],
-    version = 19,
+    version = 20,
     autoMigrations = [
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 4, to = 5),
@@ -197,6 +198,12 @@ abstract class SagerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE proxy_entities ADD COLUMN netbirdBean BLOB")
+            }
+        }
+
         @OptIn(DelicateCoroutinesApi::class)
         @Suppress("EXPERIMENTAL_API_USAGE")
         val instance by lazy {
@@ -215,6 +222,7 @@ abstract class SagerDatabase : RoomDatabase() {
                     MIGRATION_16_17,
                     MIGRATION_17_18,
                     MIGRATION_18_19,
+                    MIGRATION_19_20,
                 )
                 .setJournalMode(JournalMode.TRUNCATE)
                 .allowMainThreadQueries()
@@ -224,9 +232,9 @@ abstract class SagerDatabase : RoomDatabase() {
                 .build()
         }
 
-        val groupDao get() = instance.groupDao()
-        val proxyDao get() = instance.proxyDao()
-        val rulesDao get() = instance.rulesDao()
+        val groupDao by lazy { ControlAccess.wrap(ProxyGroup.Dao::class.java, instance.groupDao(), "groups") }
+        val proxyDao by lazy { ControlAccess.wrap(ProxyEntity.Dao::class.java, instance.proxyDao(), "profiles") }
+        val rulesDao by lazy { ControlAccess.wrap(RuleEntity.Dao::class.java, instance.rulesDao(), "rules") }
 
     }
 

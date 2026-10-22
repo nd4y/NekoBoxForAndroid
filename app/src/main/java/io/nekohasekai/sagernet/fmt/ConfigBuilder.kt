@@ -13,6 +13,8 @@ import io.nekohasekai.sagernet.database.ProxyEntity.Companion.TYPE_CONFIG
 import io.nekohasekai.sagernet.database.RuleEntity
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.fmt.ConfigBuildResult.IndexEntity
+import io.nekohasekai.sagernet.fmt.netbird.*
+import io.nekohasekai.sagernet.fmt.v2ray.VMessBean
 import io.nekohasekai.sagernet.fmt.hysteria.HysteriaBean
 import io.nekohasekai.sagernet.fmt.hysteria.buildSingBoxOutboundHysteriaBean
 import io.nekohasekai.sagernet.fmt.internal.ChainBean
@@ -139,8 +141,12 @@ fun buildConfig(
         val bean = proxy.requireBean() as ConfigBean
         if (bean.type == 0) {
             val tagProxy = proxy.displayName()
+            val configMap = gson.fromJson(bean.config, mutableMapOf<String, Any?>().javaClass)
+            validateNetBirdConfig(configMap, forTest = forTest)
+            if (forExport) sanitizeNetBirdConfigForExport(configMap)
+            val configText = if (forExport) gson.toJson(configMap) else bean.config
             return ConfigBuildResult(
-                if (forTest) bean.config.withUrlTestCacheFile(urlTestCacheKey) else bean.config,
+                if (forTest) configText.withUrlTestCacheFile(urlTestCacheKey) else configText,
                 listOf(),
                 proxy.id, //
                 mapOf(tagProxy to listOf(proxy)), //
@@ -153,6 +159,10 @@ fun buildConfig(
     val trafficMap = HashMap<String, List<ProxyEntity>>()
     val tagMap = HashMap<Long, String>()
     val globalOutbounds = HashMap<Long, String>()
+    var netbirdOutboundCount = 0
+    var netbirdStateDirectory: String? = null
+    var netbirdDnsTag: String? = null
+    var netbirdDnsDomains = emptyList<String>()
     val readableNames = mutableSetOf(
         TAG_DIRECT,
         TAG_BYPASS,
@@ -256,6 +266,8 @@ fun buildConfig(
                 if (item.type == ProxyEntity.TYPE_MASTERDNSVPN) continue
                 if (regex != null && !regex.containsMatchIn(item.displayName())) continue
                 if (item.containsByeDPI()) continue
+                if (bean.skipInsecureProfiles &&
+                    io.nekohasekai.sagernet.fmt.internal.isInsecureProxySetMember(item, DataStore.globalAllowInsecure)) continue
                 when (item.type) {
                     ProxyEntity.TYPE_PROXY_SET -> error("Nested proxy set are not supported")
                     ProxyEntity.TYPE_CHAIN -> if (bean.type == ProxySetBean.TYPE_GROUP) {
@@ -469,6 +481,11 @@ fun buildConfig(
              concurrent_dial = DataStore.concurrentDial
         }
 
+        // Share the physical proxy-set root used by NetBird and ordinary routing.
+        // The resolved membership and uTLS context are part of the cache identity.
+        val proxySetRootTags = HashMap<Pair<List<Long>, Boolean>, String>()
+        val netbirdSharedProxySets = HashSet<Long>()
+
         // returns outbound tag
         @Suppress("UNCHECKED_CAST")
         fun buildChain(
@@ -477,10 +494,47 @@ fun buildConfig(
             applyGroupForceUTLS: Boolean,
             includeGroupProxyChain: Boolean,
         ): String {
-            val profileList = if (includeGroupProxyChain) {
+            var profileList = if (includeGroupProxyChain) {
                 entity.resolveChain()
             } else {
                 entity.resolveChainInternal()
+            }
+            val configuredNetBird = profileList.singleOrNull { it.netbirdBean != null }
+            val directNetBird = configuredNetBird?.netbirdBean?.connectionMode == "direct"
+            validateNetBirdChain(profileList.map {
+                when (val bean = it.requireBean()) {
+                    is NetBirdBean -> "netbird"
+                    is VMessBean -> if (bean.isVLESS) "vless" else "vmess"
+                    is ProxySetBean -> "proxy-set"
+                    else -> "other"
+                }
+            }, forTest = forTest, direct = directNetBird)
+            // Keep the saved VLESS chain as a standby, but omit every outer hop
+            // when this profile explicitly selects normal direct NetBird.
+            if (directNetBird) profileList = mutableListOf(checkNotNull(configuredNetBird))
+            val rootGroupKey = profileList.map { it.id } to applyGroupForceUTLS
+            if (entity.id in netbirdSharedProxySets) {
+                proxySetRootTags[rootGroupKey]?.let { return it }
+            }
+            var netbirdUnderlayTag: String? = null
+            val netbirdNode = profileList.singleOrNull { it.requireBean() is NetBirdBean }
+            val netbirdGroups = profileList.filter { it.requireBean() is ProxySetBean }
+            if (netbirdNode != null && netbirdGroups.isNotEmpty()) {
+                require(netbirdGroups.size == 1) { "NetBird supports one VLESS-only outer proxy set." }
+                val outer = netbirdGroups.single()
+                val members = outer.resolveChainInternal().dropLast(1)
+                require(members.isNotEmpty() && members.all { (it.requireBean() as? VMessBean)?.isVLESS == true }) {
+                    "NetBird outer proxy set must contain only VLESS profiles."
+                }
+                val allowed = members.map { it.id }.toSet() + setOf(outer.id, netbirdNode.id)
+                require(profileList.all { it.id in allowed } && profileList.getOrNull(1)?.id == outer.id) {
+                    "Use VLESS proxy set, NetBird without additional chain hops."
+                }
+                netbirdSharedProxySets.add(outer.id)
+                val key = outer.resolveChainInternal().map { it.id } to applyGroupForceUTLS
+                netbirdUnderlayTag = proxySetRootTags[key]
+                    ?: buildChain(outer.id, outer, applyGroupForceUTLS, false)
+                profileList = mutableListOf(netbirdNode)
             }
             val chainTrafficSet = HashSet<ProxyEntity>().apply {
                 if (entity.type == ProxyEntity.TYPE_CHAIN || entity.type == ProxyEntity.TYPE_PROXY_SET) {
@@ -592,6 +646,11 @@ fun buildConfig(
                 }
 
 
+                // Resolve a reused physical tag BEFORE linking the previous chain node.
+                // Otherwise a main VLESS profile is linked as a nonexistent g-ID alias.
+                val reusedGlobalTag = if (needGlobal) globalOutbounds[proxyEntity.id] else null
+                if (reusedGlobalTag != null) tagOut = reusedGlobalTag
+
                 // chain rules
                 if (!isProxySet) {
                     if (hasProxySet) {
@@ -622,8 +681,8 @@ fun buildConfig(
 
                 // now tagOut is determined
                 if (needGlobal) {
-                    globalOutbounds[proxyEntity.id]?.let {
-                        if (index == 0) chainTagOut = it // single, duplicate chain
+                    if (reusedGlobalTag != null) {
+                        if (index == 0) chainTagOut = reusedGlobalTag
                         return@forEachIndexed
                     }
                     globalOutbounds[proxyEntity.id] = tagOut
@@ -657,6 +716,21 @@ fun buildConfig(
 
                         is JuicityBean ->
                             buildSingBoxOutboundJuicityBean(bean)
+
+                        is NetBirdBean -> {
+                            require(++netbirdOutboundCount == 1) {
+                                "Only one NetBird outbound may run at a time. Use one chain in routing rules."
+                            }
+                            require(bean.customOutboundJson.isBlank() && bean.customConfigJson.isBlank()) {
+                                "Custom JSON is not supported for NetBird profiles."
+                            }
+                            netbirdDnsTag = tagOut
+                            netbirdDnsDomains = parseNetBirdDnsDomains(bean.dnsDomains)
+                            buildSingBoxOutboundNetBirdBean(bean, proxyEntity.id, forExport).also {
+                                netbirdStateDirectory = it.state_directory
+                                netbirdUnderlayTag?.let { tag -> it._hack_config_map["detour"] = tag }
+                            }
+                        }
 
                         is TrustTunnelBean ->
                             buildSingBoxOutboundTrustTunnelBean(bean)
@@ -742,11 +816,11 @@ fun buildConfig(
                     // domain_strategy
                     pastEntity?.requireBean()?.apply {
                         // don't loopback
-                        if (defaultServerDomainStrategy != "" && !serverAddress.isIpAddress()) {
+                        if (this !is NetBirdBean && defaultServerDomainStrategy != "" && !serverAddress.isIpAddress()) {
                             domainListDNSDirectForce.add("full:$serverAddress")
                         }
                     }
-                    if (bean !is ProxySetBean && bean !is MasterDnsVPNBean) {
+                    if (bean !is ProxySetBean && bean !is MasterDnsVPNBean && bean !is NetBirdBean) {
                         _hack_config_map["domain_resolver"] = buildDomainResolverConfig(
                             if (forTest) "dns-local" else "dns-direct",
                             if (forTest) "" else defaultServerDomainStrategy
@@ -865,6 +939,7 @@ fun buildConfig(
             }
 
             trafficMap[chainTagOut] = chainTrafficSet.toList()
+            if (entity.requireBean() is ProxySetBean) proxySetRootTags[rootGroupKey] = chainTagOut
             return chainTagOut
         }
 
@@ -1217,6 +1292,11 @@ fun buildConfig(
                             "proxy" -> mainProxyTag
                             else -> TAG_BLOCK
                         }
+                        // Block is a rule action in the current core, not a declared outbound.
+                        if (outbound == TAG_BLOCK) {
+                            outbound = null
+                            action = "reject"
+                        }
                     }
                 } else null
 
@@ -1500,6 +1580,9 @@ fun buildConfig(
     }.let {
         val configMap = it.asMap()
         Util.mergeJSON(configMap, proxy.requireBean().customConfigJson)
+          netbirdDnsTag?.let { applyNetBirdDnsRouting(configMap, it, netbirdDnsDomains) }
+        validateNetBirdConfig(configMap, netbirdOutboundCount, forTest, netbirdStateDirectory)
+        if (forExport) sanitizeNetBirdConfigForExport(configMap)
 
         if (!forTest && isVPN && (!DataStore.appendHttpProxy && !DataStore.requireProxyInVPN)) {
             @Suppress("UNCHECKED_CAST")

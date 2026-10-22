@@ -10,6 +10,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 import io.nekohasekai.sagernet.database.SubscriptionBean;
+import io.nekohasekai.sagernet.fmt.netbird.NetBirdBean;
 import io.nekohasekai.sagernet.fmt.http.HttpBean;
 import io.nekohasekai.sagernet.fmt.hysteria.HysteriaBean;
 import io.nekohasekai.sagernet.fmt.internal.ChainBean;
@@ -161,6 +162,12 @@ public class KryoConverters {
     public static JuicityBean juicityDeserialize(byte[] bytes) {
         if (JavaUtil.isEmpty(bytes)) return null;
         return deserialize(new JuicityBean(), bytes);
+    }
+
+    @TypeConverter
+    public static NetBirdBean netbirdDeserialize(byte[] bytes) {
+        if (JavaUtil.isEmpty(bytes)) return null;
+        return deserialize(new NetBirdBean(), bytes);
     }
 
     @TypeConverter

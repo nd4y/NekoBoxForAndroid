@@ -4243,6 +4243,15 @@ public class SingBoxOptions {
 
     }
 
+    public static class Outbound_NetBirdOptions extends Outbound {
+        public String connection_mode;
+        public String management_url;
+        public String setup_key;
+        public String hostname;
+        public String state_directory;
+        public String detour;
+    }
+
     public static class Outbound_MasterDnsVPNOptions extends Outbound {
 
         public String config;

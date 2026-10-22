@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">NekoBox+</string>
     <string name="app_name_long" translatable="false">NekoBox+ for Android</string>
     <string name="app_desc">The universal proxy toolchain for Android, written in Kotlin.</string>
@@ -221,7 +221,7 @@
     <string name="route_rules_official">Official</string>
     <string name="route_asset_status">Local version: %s</string>
     <string name="route_asset_crc32">CRC32: %s</string>
-    <string name="route_asset_crc32_pending">calculating...</string>
+    <string name="route_asset_crc32_pending">calculating…</string>
     <string name="route_asset_no_update">No update</string>
     <string name="route_asset_updated">Updated</string>
     <string name="throne_rule_sets">Throne Rule Sets</string>
@@ -807,7 +807,7 @@
     <string name="webdav_path">Backup Path</string>
     <string name="webdav_test">Test Connection</string>
     <string name="webdav_test_success">Connection Successful</string>
-    <string name="webdav_test_failed" formatted="false">Connection Failed: %s</string>
+    <string name="webdav_test_failed">Connection Failed: %s</string>
     <string name="backup_to_webdav">Backup to WebDAV</string>
     <string name="restore_from_webdav">Restore from WebDAV</string>
     <string name="webdav_backup_success">Backup to WebDAV successful</string>
@@ -889,7 +889,7 @@
     <string name="xhttp_seq_key">Seq ID Key</string>
     <string name="xhttp_server_max_header_bytes">Server Max Header Bytes</string>
     <string name="vless_encryption">Encryption</string>
-    <string name="vless_encryption_hint">mlkem768x25519plus.native.0rtt.KEY1.KEY2...</string>
+    <string name="vless_encryption_hint">mlkem768x25519plus.native.0rtt.KEY1.KEY2…</string>
     <string name="app_list_permission_denied">Unable to read installed apps.\nThis is usually because the system has restricted app read permissions.\nPlease grant permissions in the system settings.</string>
     <string name="open_app_settings">Open System Settings</string>
     <string name="username_proxy">Proxy Username</string>
@@ -1027,10 +1027,42 @@
     <string name="core_not_started_yet">Core is not started yet</string>
     <string name="core_profiler_no_snapshot">No profiler snapshot has been collected yet</string>
     <string name="core_profiler_no_data">No data</string>
-    <string name="core_profiler_collecting">Collecting data...</string>
+    <string name="core_profiler_collecting">Collecting data…</string>
     <string name="core_profiler_data_size">Data size: %sMb</string>
     <string name="core_profiler_snapshot_saved">Profiler snapshot exported</string>
     <string name="core_profiler_snapshot_deleted">Profiler snapshot deleted</string>
     <string name="core_profiler_failed">Profiler failed: %s</string>
-    <string name="core_profiler_saving">Saving...</string>
+    <string name="core_profiler_saving">Saving…</string>
+    <string name="action_netbird" translatable="false">NetBird</string>
+    <string name="netbird_chain_title">NetBird</string>
+    <string name="netbird_chain_summary">Direct NetBird is the primary mode with P2P first and relay only when P2P is unavailable. For whitelist networks, explicitly select emergency VLESS mode and create a chain: VLESS profile or VLESS-only group first, NetBird last. There is no automatic mode switching. Only one NetBird profile can run at a time.</string>
+    <string name="netbird_management_url">Management server URL</string>
+    <string name="netbird_invalid_management_url">Enter an HTTPS server address without credentials, a path or query.</string>
+    <string name="netbird_setup_key">Setup key</string>
+    <string name="netbird_setup_key_summary">Required for first enrollment. After enrollment the saved device identity is used. Shared profile links and exported configurations omit this key.</string>
+    <string name="netbird_hostname">Device name</string>
+    <string name="netbird_identity_summary">IPv4 overlay. Device identity stays in private app storage and is excluded from cloud backup. A copied or imported profile enrolls as a new device. Configure routing rules for your NetBird addresses; add DNS suffixes below for internal names.</string>
+    <string name="netbird_dns_domains">NetBird DNS suffixes (optional)</string>
+    <string name="netbird_dns_domains_summary">Comma-separated internal DNS suffixes, for example example.netbird.cloud. DNS and connections for these names use NetBird. Leave blank to configure routing manually.</string>
+    <string name="netbird_invalid_dns_domains">Enter explicit DNS suffixes separated by commas, for example example.netbird.cloud.</string>
+    <string name="netbird_ui_intro">NetBird settings</string>
+    <string name="netbird_add_profile">Add NetBird profile</string>
+    <string name="netbird_no_profiles">No NetBird profiles yet</string>
+    <string name="netbird_profile_settings">Server, enrollment key, device name and DNS</string>
+    <string name="netbird_chain_item">Connection: %1$s</string>
+    <string name="netbird_add_chain">Add connection chain</string>
+    <string name="netbird_add_chain_summary">Add a VLESS profile or VLESS-only group first, then this NetBird profile.</string>
+    <string name="netbird_rule_item">Routing: %1$s</string>
+    <string name="netbird_rule_enabled">Enabled</string>
+    <string name="netbird_rule_disabled">Disabled</string>
+    <string name="netbird_add_rule">Add domain or network rule</string>
+    <string name="netbird_add_rule_summary">The NetBird chain is preselected. Enter actual domains or IPv4 networks granted by your server.</string>
+    <string name="netbird_create_chain_first">Create a connection chain first.</string>
+    <string name="netbird_choose_chain">Choose NetBird chain</string>
+    <string name="netbird_outer_item">Outer proxy: %1$s</string>
+    <string name="netbird_connections">Connection and network routing</string>
+    <string name="netbird_connections_summary">Edit the outer VLESS profile or group, domains and IPv4 network rules.</string>
+    <string name="netbird_save_first">Save the profile changes first.</string>
+    <string name="vpn_recovery_wait" tools:ignore="MissingTranslation">Reconnecting in %1$d s</string>
+    <string name="preference_value_hint">Value</string>
 </resources>

@@ -461,7 +461,7 @@
     <string name="route_rules_official">Официальный</string>
     <string name="route_rules_provider">Источник правил</string>
     <string name="route_asset_crc32">CRC32: %s</string>
-    <string name="route_asset_crc32_pending">вычисляется...</string>
+    <string name="route_asset_crc32_pending">вычисляется…</string>
     <string name="throne_rule_sets">Throne Rule Sets</string>
     <string name="itdog_rule_sets">ITDog Rule Sets</string>
     <string name="route_warn">Перед добавлением своих правил прочитайте документацию, иначе интернет может не работать.</string>
@@ -688,7 +688,7 @@
     <string name="webdav_path">Путь резервной копии</string>
     <string name="webdav_test">Проверить подключение</string>
     <string name="webdav_test_success">Подключение успешно</string>
-    <string name="webdav_test_failed" formatted="false">Подключение не удалось: %s</string>
+    <string name="webdav_test_failed">Подключение не удалось: %s</string>
     <string name="webdav_backup_success">Копия WebDAV создана</string>
     <string name="webdav_backup_failed">Копия WebDAV не создана: %s</string>
     <string name="webdav_restore_success">Восстановлено из WebDAV</string>
@@ -801,7 +801,7 @@
     <string name="strict_route">Строгий маршрут</string>
     <string name="translate_platform">Платформа перевода</string>
     <string name="vless_encryption">Шифрование VLESS</string>
-    <string name="vless_encryption_hint">mlkem768x25519plus.native.0rtt.KEY1.KEY2...</string>
+    <string name="vless_encryption_hint">mlkem768x25519plus.native.0rtt.KEY1.KEY2…</string>
     <string name="xhttp_settings">Настройки XHTTP</string>
     <string name="xhttp_host">Хост XHTTP</string>
     <string name="xhttp_path">Путь XHTTP</string>
@@ -962,12 +962,12 @@
     <string name="core_not_started_yet">Ядро ещё не запущено</string>
     <string name="core_profiler_no_snapshot">Снапшот профайлера ещё не собран</string>
     <string name="core_profiler_no_data">Нет данных</string>
-    <string name="core_profiler_collecting">Сбор данных...</string>
+    <string name="core_profiler_collecting">Сбор данных…</string>
     <string name="core_profiler_data_size">Размер данных: %sМб</string>
     <string name="core_profiler_snapshot_saved">Снапшот профайлера экспортирован</string>
     <string name="core_profiler_snapshot_deleted">Снапшот профайлера удалён</string>
     <string name="core_profiler_failed">Ошибка профайлера: %s</string>
-    <string name="core_profiler_saving">Сохранение...</string>
+    <string name="core_profiler_saving">Сохранение…</string>
     <string name="ech">ECH</string>
     <string name="ech_query_server_name">Имя сервера для запроса</string>
     <string name="health_check">Проверка работоспособности</string>
@@ -991,4 +991,35 @@
     <string name="tls_record_fragment">Фрагментация TLS с упаковкой в TLS-записи</string>
     <string name="mutual_tls">Взаимный TLS (mTLS)</string>
     <string name="language">Язык</string>
+    <string name="netbird_chain_title">NetBird</string>
+    <string name="netbird_chain_summary">Прямой NetBird - основной режим с приоритетом P2P; relay подключается при недоступности P2P. Для сетей с белыми списками явно выберите аварийный режим через VLESS и создайте цепочку: сначала VLESS или группа только из VLESS, затем NetBird. Автоматического переключения режимов нет. Одновременно доступен один профиль NetBird.</string>
+    <string name="netbird_management_url">URL сервера управления</string>
+    <string name="netbird_invalid_management_url">Укажите HTTPS-адрес сервера без учётных данных, пути и параметров запроса.</string>
+    <string name="netbird_setup_key">Ключ регистрации (setup key)</string>
+    <string name="netbird_setup_key_summary">Нужен для первой регистрации. Затем используется сохранённая идентичность устройства. Ссылки на профиль и экспорт конфигурации не содержат этот ключ.</string>
+    <string name="netbird_hostname">Имя устройства</string>
+    <string name="netbird_identity_summary">Внутренняя сеть работает по IPv4. Идентичность хранится в закрытом каталоге приложения без облачного резервирования. Копия или импорт профиля регистрируется как новое устройство. Добавьте правила маршрутизации для адресов NetBird; для внутренних имён укажите DNS-суффиксы ниже.</string>
+    <string name="netbird_dns_domains">DNS-суффиксы NetBird (необязательно)</string>
+    <string name="netbird_dns_domains_summary">Внутренние DNS-суффиксы через запятую, например example.netbird.cloud. Запросы DNS и соединения для этих имён направляются в NetBird. Оставьте пустым для ручной настройки правил.</string>
+    <string name="netbird_invalid_dns_domains">Укажите DNS-суффиксы через запятую, например example.netbird.cloud.</string>
+    <string name="netbird_ui_intro">Настройки NetBird</string>
+    <string name="netbird_add_profile">Добавить профиль NetBird</string>
+    <string name="netbird_no_profiles">Профилей NetBird пока нет</string>
+    <string name="netbird_profile_settings">Сервер, ключ регистрации, имя устройства и DNS</string>
+    <string name="netbird_chain_item">Подключение: %1$s</string>
+    <string name="netbird_add_chain">Добавить цепочку подключения</string>
+    <string name="netbird_add_chain_summary">Добавьте сначала профиль VLESS или группу только из VLESS, затем этот профиль NetBird.</string>
+    <string name="netbird_rule_item">Маршрутизация: %1$s</string>
+    <string name="netbird_rule_enabled">Включено</string>
+    <string name="netbird_rule_disabled">Выключено</string>
+    <string name="netbird_add_rule">Добавить правило для доменов или сетей</string>
+    <string name="netbird_add_rule_summary">Цепочка NetBird уже выбрана. Укажите реальные домены или сети IPv4, доступные вашему устройству.</string>
+    <string name="netbird_create_chain_first">Сначала создайте цепочку подключения.</string>
+    <string name="netbird_choose_chain">Выберите цепочку NetBird</string>
+    <string name="netbird_outer_item">Внешний прокси: %1$s</string>
+    <string name="netbird_connections">Подключение и маршрутизация сетей</string>
+    <string name="netbird_connections_summary">Изменить внешний профиль или группу VLESS, правила для доменов и сетей IPv4.</string>
+    <string name="netbird_save_first">Сначала сохраните изменения профиля.</string>
+    <string name="vpn_recovery_wait">Повторное подключение через %1$d с</string>
+    <string name="preference_value_hint">Значение</string>
 </resources>

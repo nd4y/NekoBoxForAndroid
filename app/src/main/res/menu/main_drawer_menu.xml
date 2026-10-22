@@ -18,6 +18,11 @@
             android:title="@string/menu_route" />
 
         <item
+            android:id="@+id/nav_netbird"
+            android:icon="@drawable/ic_hardware_router"
+            android:title="@string/action_netbird" />
+
+        <item
             android:id="@+id/nav_route_apps"
             android:icon="@drawable/ic_navigation_apps"
             android:title="@string/apps" />

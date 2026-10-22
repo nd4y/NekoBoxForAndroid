@@ -26,6 +26,7 @@ public class ProxySetBean extends InternalBean {
     public String groupFilterNotRegex = "";
 
     public boolean interruptExistConnections = false;
+    public boolean skipInsecureProfiles = false;
 
     public String testURL = CONNECTION_TEST_URL;
     public String testInterval = "3m";
@@ -56,7 +57,7 @@ public class ProxySetBean extends InternalBean {
 
     @Override
     public void serialize(ByteBufferOutput output) {
-        output.writeInt(1);
+        output.writeInt(2);
         output.writeBoolean(interruptExistConnections);
         output.writeString(testURL);
         output.writeString(testInterval);
@@ -73,6 +74,7 @@ public class ProxySetBean extends InternalBean {
                 output.writeLong(proxy);
             }
         }
+        output.writeBoolean(skipInsecureProfiles);
     }
 
     @Override
@@ -97,6 +99,7 @@ public class ProxySetBean extends InternalBean {
                 proxies.add(input.readLong());
             }
         }
+        skipInsecureProfiles = version >= 2 && input.readBoolean();
     }
 
     public String displayType() {

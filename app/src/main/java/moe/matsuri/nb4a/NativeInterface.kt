@@ -40,7 +40,7 @@ import io.nekohasekai.sagernet.Key
 class NativeInterface : BoxPlatformInterface, NB4AInterface {
     private val nativeStateSyncPolicy = NativeStateSyncPolicy()
     private var lastLoggedWifiState: String? = null
-    private var wifiRuleMonitoringEnabled = false
+    @Volatile private var wifiRuleMonitoringEnabled = false
     private var wifiStateReceiverRegistered = false
 
     private val wifiStateReceiver = object : BroadcastReceiver() {
@@ -88,6 +88,10 @@ class NativeInterface : BoxPlatformInterface, NB4AInterface {
     }
 
     fun notifyWifiStateChanged(reason: String = "manual") {
+        io.nekohasekai.sagernet.utils.DefaultNetworkListener.runOnNetworkWorker { refreshWifiState(reason) }
+    }
+
+    private fun refreshWifiState(reason: String) {
         if (!wifiRuleMonitoringEnabled || !canReadWifiIdentityInBackground()) {
             return
         }
@@ -97,6 +101,7 @@ class NativeInterface : BoxPlatformInterface, NB4AInterface {
         }
         Logs.d("Wi-Fi changed ($reason) in process ${SagerNet.application.process}: $wifiState")
         lastLoggedWifiState = wifiState
+        io.nekohasekai.sagernet.control.ControlDiagnostics.event("network.wifi.changed", mapOf("reason" to reason))
         Libcore.updatePlatformWIFIState()
     }
 
@@ -181,7 +186,7 @@ class NativeInterface : BoxPlatformInterface, NB4AInterface {
         return interfaces.toString()
     }
 
-    fun syncNetworkState(network: Network?) {
+    @Synchronized fun syncNetworkState(network: Network?) {
         val defaultInterface = if (network == null) "" else buildDefaultInterface(network)?.toString() ?: ""
         val interfaces = networkInterfaces()
         if (!nativeStateSyncPolicy.shouldSyncNetworkState(defaultInterface, interfaces)) {
@@ -283,9 +288,12 @@ class NativeInterface : BoxPlatformInterface, NB4AInterface {
         val interfaceName = linkProperties.interfaceName ?: return null
         val networkInterface = runCatching { NetworkInterface.getByName(interfaceName) }.getOrNull()
         val flags = buildFlags(networkInterface)
+        val fallbackMtu = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) linkProperties.mtu else 1500
         return JSONObject().apply {
             put("index", networkInterface?.index ?: 0)
-            put("mtu", networkInterface?.mtu ?: linkProperties.mtu)
+            put("mtu", io.nekohasekai.sagernet.utils.NetworkCallbackSafety.mtu(fallbackMtu) {
+                networkInterface?.mtu ?: fallbackMtu
+            })
             put("name", interfaceName)
             put("flags", flags)
             put("addresses", JSONArray().apply {

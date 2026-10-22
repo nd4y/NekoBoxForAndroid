@@ -1,0 +1,6 @@
+{
+  "operations": [
+    {"op": "profile.update", "id": 2, "values": {"name": "VLESS uplink"}},
+    {"op": "settings.patch", "values": {"remoteDns": "https://1.1.1.1/dns-query"}}
+  ]
+}

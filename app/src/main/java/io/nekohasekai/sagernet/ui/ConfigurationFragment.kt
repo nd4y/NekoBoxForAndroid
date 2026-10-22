@@ -107,6 +107,7 @@ import io.nekohasekai.sagernet.ui.profile.SnellSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.SocksSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.TrojanGoSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.TrojanSettingsActivity
+import io.nekohasekai.sagernet.ui.profile.NetBirdSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.TrustTunnelSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.TuicSettingsActivity
 import io.nekohasekai.sagernet.ui.profile.VMessSettingsActivity
@@ -472,7 +473,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             if (e.link.startsWith("sn://")) {
                                 (requireActivity() as MainActivity).importSubscription(e.link.toUri())
                             } else {
-                                val subscriptionLink = Uri.parse(e.link).getQueryParameter("url") ?: e.link
+                                val subscriptionLink = e.link.toUri().getQueryParameter("url") ?: e.link
 
                                 val group = ProxyGroup(type = GroupType.SUBSCRIPTION)
                                 val subscription = SubscriptionBean()
@@ -555,6 +556,10 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             R.id.action_new_juicity -> {
                 startActivity(Intent(requireActivity(), JuicitySettingsActivity::class.java))
+            }
+
+            R.id.action_new_netbird -> {
+                startActivity(Intent(requireActivity(), NetBirdSettingsActivity::class.java))
             }
 
             R.id.action_new_trusttunnel -> {
@@ -1956,6 +1961,12 @@ class ConfigurationFragment @JvmOverloads constructor(
                 if (select) {
                     view.setOnClickListener {
                         (requireActivity() as SelectCallback).returnProfile(proxyEntity.id)
+                    }
+                } else if (proxyEntity.netbirdBean != null) {
+                    // This outbound requires a chain. Opening its settings must not replace
+                    // the active main profile and tear down an otherwise working VPN.
+                    view.setOnClickListener {
+                        startActivity(Intent(requireContext(), NetBirdActivity::class.java))
                     }
                 } else {
                     view.setOnClickListener {

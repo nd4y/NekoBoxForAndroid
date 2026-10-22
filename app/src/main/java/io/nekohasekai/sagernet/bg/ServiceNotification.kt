@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.bg
 
+import io.nekohasekai.sagernet.ktx.Logs
 import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -45,7 +46,7 @@ class ServiceNotification(
     companion object {
         const val notificationId = 1
         val flags =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+            PendingIntent.FLAG_IMMUTABLE
 
         fun genTitle(ent: ProxyEntity): String {
             val gn = if (DataStore.showGroupInNotification)
@@ -156,7 +157,9 @@ class ServiceNotification(
 
             val closeAction = NotificationCompat.Action.Builder(
                 0, service.getText(R.string.stop), PendingIntent.getBroadcast(
-                    service, 0, Intent(Action.CLOSE).setPackage(service.packageName), flags
+                    service, 0, Intent(Action.CLOSE).setPackage(service.packageName)
+                        .putExtra(VpnIntentStore.EXTRA_GENERATION, VpnIntentStore.token()),
+                    flags or PendingIntent.FLAG_UPDATE_CURRENT
                 )
             ).setShowsUserInterface(false).build()
             it.addAction(closeAction)
@@ -215,7 +218,11 @@ class ServiceNotification(
         }
 
     private suspend fun update() = useBuilder {
-        NotificationManagerCompat.from(service as Service).notify(notificationId, it.build())
+        try {
+            NotificationManagerCompat.from(service as Service).notify(notificationId, it.build())
+        } catch (_: SecurityException) {
+            Logs.w("Notification permission unavailable")
+        }
     }
 
     fun destroy() {

@@ -5,6 +5,8 @@ import android.provider.Settings
 import java.security.MessageDigest
 
 object HwidGenerator {
+    // Subscription providers require a stable, app-scoped Android ID hash. Never logged.
+    @android.annotation.SuppressLint("HardwareIds")
     fun generate(context: Context): String {
         val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
         val input = androidId + "NekoBoxPlus"

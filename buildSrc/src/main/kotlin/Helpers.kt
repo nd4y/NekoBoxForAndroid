@@ -141,6 +141,13 @@ fun Project.setupAppCommon() {
 }
 
 fun Project.setupApp() {
+    val supportedAbis = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+    val nativeAbis = findProperty("nativeAbis")?.toString()?.split(',')?.map { it.trim() }
+        ?: supportedAbis
+    require(nativeAbis.isNotEmpty() && nativeAbis.all { it in supportedAbis } &&
+        nativeAbis.distinct().size == nativeAbis.size) {
+        "nativeAbis must be a comma-separated subset of ${supportedAbis.joinToString(",")}."
+    }
     val pkgName = requireMetadata().getProperty("PACKAGE_NAME")
     val verName = requireMetadata().getProperty("VERSION_NAME")
     val verCode = (requireMetadata().getProperty("VERSION_CODE").toInt()) * 5
@@ -149,6 +156,7 @@ fun Project.setupApp() {
             applicationId = pkgName
             versionCode = verCode
             versionName = verName
+            ndk.abiFilters += nativeAbis
             buildConfigField("String", "PRE_VERSION_NAME", "\"\"")
         }
     }
@@ -170,10 +178,7 @@ fun Project.setupApp() {
             reset()
             isEnable = true
             isUniversalApk = true
-            include("armeabi-v7a")
-            include("arm64-v8a")
-            include("x86")
-            include("x86_64")
+            include(*nativeAbis.toTypedArray())
         }
 
         flavorDimensions += "vendor"

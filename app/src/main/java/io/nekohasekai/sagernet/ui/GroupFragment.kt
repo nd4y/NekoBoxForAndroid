@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.ui
 
+import androidx.core.net.toUri
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -206,12 +207,12 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
             fun linkWithoutFragment(link: String): String {
                 return runCatching {
-                    Uri.parse(link).buildUpon().fragment(null).build().toString()
+                    link.toUri().buildUpon().fragment(null).build().toString()
                 }.getOrElse { link.substringBefore('#') }
             }
 
             fun linkFragment(link: String): String? {
-                return runCatching { Uri.parse(link).fragment }.getOrNull()
+                return runCatching { link.toUri().fragment }.getOrNull()
                     ?.takeIf { it.isNotBlank() }
             }
 
@@ -256,7 +257,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
             }
 
             suspend fun addSnSubscription(link: String) {
-                val uri = Uri.parse(link)
+                val uri = link.toUri()
                 val url = uri.getQueryParameter("url")
                 if (!url.isNullOrBlank()) {
                     addSubscription(url, uri.getQueryParameter("name") ?: linkFragment(url))
@@ -518,7 +519,7 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
             fun subscriptionUrl(): String {
                 val link = proxyGroup.subscription?.link.orEmpty()
-                val hasFragment = link.contains("#") || runCatching { Uri.parse(link).fragment != null }
+                val hasFragment = link.contains("#") || runCatching { link.toUri().fragment != null }
                     .getOrDefault(false)
                 return if (hasFragment) link else link + "#" + Uri.encode(proxyGroup.displayName())
             }

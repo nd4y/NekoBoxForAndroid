@@ -1,0 +1,46 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <EditTextPreference
+        app:icon="@drawable/ic_social_emoji_symbols"
+        app:key="name"
+        app:title="@string/profile_name"
+        app:useSimpleSummaryProvider="true" />
+    <Preference
+        app:selectable="false"
+        app:title="@string/netbird_chain_title"
+        app:summary="@string/netbird_chain_summary" />
+    <ListPreference
+        app:key="connectionMode"
+        app:title="@string/netbird_mode"
+        app:entries="@array/netbird_mode_names"
+        app:entryValues="@array/netbird_mode_values"
+        app:useSimpleSummaryProvider="true" />
+    <EditTextPreference
+        app:icon="@drawable/ic_hardware_router"
+        app:key="managementUrl"
+        app:title="@string/netbird_management_url"
+        app:useSimpleSummaryProvider="true" />
+    <EditTextPreference
+        app:dialogLayout="@layout/layout_password_dialog"
+        app:icon="@drawable/ic_baseline_vpn_key_24"
+        app:key="setupKey"
+        app:title="@string/netbird_setup_key"
+        app:dialogMessage="@string/netbird_setup_key_summary" />
+    <EditTextPreference
+        app:icon="@drawable/ic_baseline_domain_24"
+        app:key="hostname"
+        app:title="@string/netbird_hostname"
+        app:useSimpleSummaryProvider="true" />
+    <EditTextPreference
+        app:icon="@drawable/ic_baseline_domain_24"
+        app:key="dnsDomains"
+        app:title="@string/netbird_dns_domains"
+        app:dialogMessage="@string/netbird_dns_domains_summary"
+        app:useSimpleSummaryProvider="true" />
+    <Preference
+        app:selectable="false"
+        app:summary="@string/netbird_identity_summary" />
+    <Preference
+        app:key="netbirdConnections"
+        app:title="@string/netbird_connections"
+        app:summary="@string/netbird_connections_summary" />
+</PreferenceScreen>

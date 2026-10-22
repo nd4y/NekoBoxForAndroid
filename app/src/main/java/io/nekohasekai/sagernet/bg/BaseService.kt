@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.bg
 
+import androidx.core.content.ContextCompat
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -21,7 +22,17 @@ import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.plugin.PluginManager
 import io.nekohasekai.sagernet.utils.DefaultNetworkListener
-import kotlinx.coroutines.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.cancel as cancelScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import libcore.Libcore
@@ -47,21 +58,35 @@ class BaseService {
     interface ExpectedException
 
     class Data internal constructor(private val service: Interface) {
-        var state = State.Stopped
+        @Volatile var state = State.Stopped
         var proxy: ProxyInstance? = null
         var notification: ServiceNotification? = null
         var networkRecoveryJob: Job? = null
+        var retryJob: Job? = null
+        var stableJob: Job? = null
+        @Volatile var retryAttempt = 0
+        @Volatile var retryAtMs: Long? = null
+        var intentToken = 0L
+        var startAfterRecovery = false
+        var lastStartId = 0
+        @Volatile var holdTunDuringRecovery = false
 
         val receiver = broadcastReceiver { ctx, intent ->
             when (intent.action) {
                 Intent.ACTION_SHUTDOWN -> service.persistStats()
                 Action.RELOAD -> service.reload()
                 // Action.SWITCH_WAKE_LOCK -> runOnDefaultDispatcher { service.switchWakeLock() }
-                PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        if (SagerNet.power.isDeviceIdleMode) {
-                            proxy?.box?.sleep()
-                        } else {
+                PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED,
+                CoreIdlePolicy.WHITELIST_CHANGED -> {
+                    val action = CoreIdlePolicy.action(
+                        SagerNet.power.isDeviceIdleMode,
+                        SagerNet.power.isIgnoringBatteryOptimizations(SagerNet.application.packageName),
+                        intent.action == PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED,
+                    )
+                    when (action) {
+                        CoreIdlePolicy.Action.Sleep -> proxy?.box?.sleep()
+                        CoreIdlePolicy.Action.Wake -> proxy?.box?.wake()
+                        CoreIdlePolicy.Action.WakeAndRecover -> {
                             proxy?.box?.wake()
                             service.handleConnectionRecovery(
                                 reconnect = DataStore.wakeReconnect,
@@ -80,7 +105,10 @@ class BaseService {
                     }
                 }
 
-                else -> service.stopRunner()
+                else -> {
+                    val generation = intent.getLongExtra(VpnIntentStore.EXTRA_GENERATION, 0L)
+                    if (generation == 0L || generation == VpnIntentStore.token()) service.stopRunner()
+                }
             }
         }
         var closeReceiverRegistered = false
@@ -91,6 +119,7 @@ class BaseService {
 
         fun changeState(s: State, msg: String? = null) {
             if (state == s && msg == null) return
+            io.nekohasekai.sagernet.control.ControlDiagnostics.event("service.state", mapOf("from" to state.name, "to" to s.name))
             state = s
             DataStore.serviceState = s
             binder.stateChanged(s, msg)
@@ -146,6 +175,11 @@ class BaseService {
             callbackIdMap.remove(cb)
             callbacks.unregister(cb)
         }
+
+        override fun netBirdStatus(): String = Libcore.netBirdStatus()
+        override fun netBirdDiagnostics(): String = Libcore.netBirdDiagnostics()
+        override fun startNetBirdDiagnostics(): String = Libcore.startNetBirdDiagnostics()
+        override fun cancelNetBirdDiagnostics(): String = Libcore.cancelNetBirdDiagnostics()
 
         override fun urlTest(): Int {
             if (data?.proxy?.box == null) {
@@ -212,7 +246,7 @@ class BaseService {
 
         override fun close() {
             callbacks.kill()
-            cancel()
+            cancelScope()
             data = null
         }
     }
@@ -227,7 +261,8 @@ class BaseService {
 
         fun reload() {
             if (DataStore.selectedProxy == 0L) {
-                stopRunner(false, (this as Context).getString(R.string.profile_empty))
+                stopRunner(false, (this as Context).getString(R.string.profile_empty), recover = true)
+                return
             }
             if (canReloadSelector()) {
                 val ent = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
@@ -277,9 +312,10 @@ class BaseService {
         }
 
         fun startRunner() {
+            if (VpnIntentStore.token() <= 0) return
             this as Context
-            if (Build.VERSION.SDK_INT >= 26) startForegroundService(Intent(this, javaClass))
-            else startService(Intent(this, javaClass))
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(Intent(this, javaClass).putExtra(VpnIntentStore.EXTRA_GENERATION, VpnIntentStore.token()))
+            else startService(Intent(this, javaClass).putExtra(VpnIntentStore.EXTRA_GENERATION, VpnIntentStore.token()))
         }
 
         /**
@@ -315,6 +351,8 @@ class BaseService {
                 stopForeground(true)
             }
         }
+
+        fun releaseRetainedResources() = Unit
 
         fun killProcesses() {
             data.networkRecoveryJob?.cancel()
@@ -365,10 +403,27 @@ class BaseService {
             Libcore.resetAllConnections(true)
         }
 
-        fun stopRunner(restart: Boolean = false, msg: String? = null) {
+        fun stopRunner(restart: Boolean = false, msg: String? = null, recover: Boolean = false) {
+            if (Looper.myLooper() != Looper.getMainLooper()) {
+                runOnMainDispatcher { stopRunner(restart, msg, recover) }
+                return
+            }
+            if (!restart && !recover) {
+                VpnIntentStore.request(false)
+                VpnRecoveryWatchdog.cancel(this as Context)
+            }
+            data.holdTunDuringRecovery = (recover || restart) && VpnIntentStore.matches(data.intentToken)
+            data.retryJob?.cancel(null)
+            data.retryJob = null
+            data.stableJob?.cancel(null)
+            data.stableJob = null
+            data.retryAtMs = null
             if (data.state == State.Stopping) return
-            data.notification?.destroy()
-            data.notification = null
+            val preservingIntent = restart || recover
+            if (!preservingIntent) {
+                data.notification?.destroy()
+                data.notification = null
+            }
             this as Service
 
             data.changeState(State.Stopping)
@@ -377,14 +432,19 @@ class BaseService {
                 val currentJob = currentCoroutineContext()[Job]
                 val connectingJob = data.connectingJob
                 if (connectingJob != null && connectingJob != currentJob) {
-                    connectingJob.cancelAndJoin() // ensure stop connecting first
+                    cancelConnectingJob(connectingJob) {
+                        data.proxy?.takeIf { it.isInitialized() }?.let { proxy ->
+                            runCatching { proxy.box.cancelStart() }.onFailure { Logs.w(it) }
+                        }
+                    }
                 }
 
                 data.lifecycleMutex.withLock {
                     // Remove the foreground notification promptly, but keep the service alive until
                     // native/VPN cleanup finishes. This makes the visible disconnect state immediate
                     // while avoiding a new start racing the old tun/core instance.
-                    runCatching { removeForegroundNotification() }.onFailure { Logs.w(it) }
+                    if (!preservingIntent && VpnIntentStore.token() <= 0)
+                        runCatching { removeForegroundNotification() }.onFailure { Logs.w(it) }
 
                     withContext(Dispatchers.IO) {
                         withStopWakeLock {
@@ -392,28 +452,45 @@ class BaseService {
                         }
                     }
 
-                    val data = data
+                    data.proxy = null
+                    DataStore.vpnService = null
+                }
+
+                // stop the service if nothing has bound to it
+                val nextToken = VpnIntentStore.token()
+                if (nextToken > 0) {
+                    val wait = if (recover) VpnRecoveryPolicy.delayMillis(
+                        data.retryAttempt++, kotlin.random.Random.nextLong(1000)
+                    ) else 300L
+                    data.retryAtMs = System.currentTimeMillis() + wait
+                    io.nekohasekai.sagernet.control.ControlDiagnostics.event(
+                        "service.retry.scheduled", mapOf("attempt" to data.retryAttempt, "delayMs" to wait)
+                    )
+                    data.changeState(State.Connecting)
+                    data.notification?.postNotificationTitle(getString(R.string.vpn_recovery_wait, (wait + 999) / 1000))
+                    data.retryJob = runOnMainDispatcher {
+                        delay(wait)
+                        if (VpnIntentStore.matches(nextToken)) {
+                            data.retryAtMs = null
+                            data.retryJob = null
+                            data.startAfterRecovery = true
+                            onStartCommand(Intent(this@Interface as Context, this@Interface.javaClass).putExtra(VpnIntentStore.EXTRA_GENERATION, nextToken), 0, 0)
+                        }
+                    }
+                } else {
+                    data.notification?.destroy()
+                    data.notification = null
                     if (data.closeReceiverRegistered) {
                         unregisterReceiver(data.receiver)
                         data.closeReceiverRegistered = false
                     }
-                    data.proxy = null
-
+                    // Stop may arrive after cleanup retained a TUN. Dispose it
+                    // here as well, so a bound service cannot keep routing alive.
+                    data.holdTunDuringRecovery = false
+                    releaseRetainedResources()
                     DataStore.baseService = null
-                    DataStore.vpnService = null
-
-                    // change the state
                     data.changeState(State.Stopped, msg)
-                }
-
-                // stop the service if nothing has bound to it
-                if (restart) {
-                    // Give Android's VpnService/tun teardown a short chance to settle before creating
-                    // a new tun instance. This avoids click-to-reconnect races on some devices.
-                    delay(300)
-                    startRunner()
-                } else {
-                    stopSelf()
+                    if (data.lastStartId > 0) stopSelfResult(data.lastStartId) else stopSelf()
                 }
             }
         }
@@ -455,11 +532,22 @@ class BaseService {
                 val link = network?.let { current -> SagerNet.connectivity.getLinkProperties(current) }
                 val currentName = link?.interfaceName
                 upstreamInterfaceName = currentName
+                val caps = network?.let { SagerNet.connectivity.getNetworkCapabilities(it) }
+                val transport = when {
+                    caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true -> "wifi"
+                    caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "cellular"
+                    else -> "other"
+                }
+                io.nekohasekai.sagernet.control.ControlDiagnostics.event(
+                    "network.update",
+                    mapOf("interface" to currentName, "network" to network?.networkHandle, "transport" to transport),
+                )
                 val decision = networkChangeRecoveryPolicy.onNetworkChanged(
                     interfaceName = currentName,
                     isVpnNetwork = isVpnNetwork(network),
                     reconnectEnabled = DataStore.networkChangeReconnect,
                     resetEnabled = DataStore.networkChangeResetConnections,
+                    networkHandle = network?.networkHandle,
                 )
                 if (decision.reconnect || decision.reset) {
                     Logs.d("Network changed: ${decision.oldInterfaceName} -> ${decision.newInterfaceName}")
@@ -511,16 +599,50 @@ class BaseService {
         }
 
         fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+            if (startId > 0) data.lastStartId = startId
+            val fromRecovery = data.startAfterRecovery
+            data.startAfterRecovery = false
+            val requested = intent?.getLongExtra(VpnIntentStore.EXTRA_GENERATION, 0L) ?: 0L
+            var token = VpnIntentStore.token()
+            // A first OS/legacy start is allowed. A saved explicit Stop is not.
+            if (token == 0L && requested == 0L) token = VpnIntentStore.request(true)
+            if (!VpnRecoveryPolicy.accepts(requested, token)) {
+                if (token > 0 && data.state != State.Stopped) return Service.START_STICKY
+                if (data.state == State.Stopped && startId > 0) (this as Service).stopSelfResult(startId)
+                return Service.START_NOT_STICKY
+            }
             DataStore.baseService = this
-
+            VpnRecoveryWatchdog.schedule(this as Context)
             val data = data
-            if (data.state != State.Stopped) return Service.START_NOT_STICKY
+            val newRequest = data.intentToken != token
+            var resumeRetry = fromRecovery
+            if (newRequest) {
+                data.retryAttempt = 0
+                data.retryAtMs = null
+                if (data.retryJob != null) {
+                    data.retryJob?.cancel(null)
+                    data.retryJob = null
+                    resumeRetry = true
+                }
+            }
+            data.intentToken = token
+            if (newRequest && data.state == State.Connected) {
+                stopRunner(restart = true)
+                return Service.START_STICKY
+            }
+            if (data.state != State.Stopped && !resumeRetry) {
+                // A newer Connect may arrive while an earlier Stop is draining.
+                // Fulfil the foreground deadline immediately; teardown will start
+                // the newest generation after old native ownership is released.
+                if (data.notification == null) data.notification = createNotification(data.proxy?.displayProfileName ?: "")
+                return Service.START_STICKY
+            }
             val profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
             this as Context
             if (profile == null) { // gracefully shutdown: https://stackoverflow.com/q/47337857/2245107
                 data.notification = createNotification("")
-                stopRunner(false, getString(R.string.profile_empty))
-                return Service.START_NOT_STICKY
+                stopRunner(false, getString(R.string.profile_empty), recover = true)
+                return Service.START_STICKY
             }
 
             val proxy = ProxyInstance(profile, this)
@@ -534,27 +656,14 @@ class BaseService {
                     addAction(Intent.ACTION_SHUTDOWN)
                     addAction(Action.CLOSE)
                     // addAction(Action.SWITCH_WAKE_LOCK)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
-                    }
+                    addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
+                    addAction(CoreIdlePolicy.WHITELIST_CHANGED)
                     addAction(Action.RESET_UPSTREAM_CONNECTIONS)
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    registerReceiver(
-                        data.receiver,
-                        filter,
-                        "$packageName.SERVICE",
-                        null,
-                        Context.RECEIVER_EXPORTED
-                    )
-                } else {
-                    registerReceiver(
-                        data.receiver,
-                        filter,
-                        "$packageName.SERVICE",
-                        null
-                    )
-                }
+                ContextCompat.registerReceiver(
+                    this as Context, data.receiver, filter,
+                    "$packageName.SERVICE", null, ContextCompat.RECEIVER_EXPORTED,
+                )
                 data.closeReceiverRegistered = true
             }
 
@@ -563,7 +672,8 @@ class BaseService {
                 data.lifecycleMutex.withLock {
                     try {
                         withContext(Dispatchers.Main.immediate) {
-                            data.notification = createNotification(ServiceNotification.genTitle(profile))
+                            if (data.notification == null) data.notification = createNotification(ServiceNotification.genTitle(profile))
+                            else data.notification?.postNotificationTitle(ServiceNotification.genTitle(profile))
                         }
 
                         Executable.killAll()    // clean up old processes
@@ -572,22 +682,36 @@ class BaseService {
                         SagerNet.application.nativeInterface.unregisterWifiStateListener()
                         preInit()
                         proxy.init()
+                        // Stop may have arrived before init assigned the native box.
+                        currentCoroutineContext().ensureActive()
                         if (hasActiveWifiRules) {
                             SagerNet.application.nativeInterface.registerWifiStateListener()
                             SagerNet.application.nativeInterface.notifyWifiStateChanged("post-init")
                         }
                         DataStore.currentProfile = profile.id
 
-                        proxy.processes = GuardedProcessPool {
-                            Logs.w(it)
-                            stopRunner(false, it.readableMessage)
+                        proxy.processes = GuardedProcessPool { failure ->
+                            Logs.w(failure)
+                            runOnMainDispatcher {
+                                if (data.proxy === proxy && VpnIntentStore.matches(token))
+                                    stopRunner(false, failure.readableMessage, recover = true)
+                            }
                         }
 
+                        currentCoroutineContext().ensureActive()
                         startProcesses()
+                        RecoveryFaults.afterStart()
+                        currentCoroutineContext().ensureActive()
                         if (DataStore.enableCoreProfiling) {
                             Libcore.startCoreProfiling()
                         }
+                        if (!VpnIntentStore.matches(token)) { stopRunner(restart = VpnIntentStore.token() > 0); return@withLock }
+                        data.holdTunDuringRecovery = false
                         data.changeState(State.Connected)
+                        data.stableJob = runOnDefaultDispatcher {
+                            delay(60_000)
+                            if (VpnIntentStore.matches(token) && data.state == State.Connected) data.retryAttempt = 0
+                        }
                         SagerNet.application.nativeInterface.maybeShowRedactedWifiToastOnConnect()
 
                         lateInit()
@@ -597,15 +721,24 @@ class BaseService {
                         }
                     } catch (_: CancellationException) { // if the job was cancelled, it is canceller's responsibility to call stopRunner
                     } catch (_: UnknownHostException) {
-                        stopRunner(false, getString(R.string.invalid_server))
+                        io.nekohasekai.sagernet.control.ControlDiagnostics.event("service.start.failed", mapOf("category" to "dns", "type" to "UnknownHostException"))
+                        currentCoroutineContext().ensureActive()
+                        stopRunner(false, getString(R.string.invalid_server), recover = true)
                     } catch (e: PluginManager.PluginNotFoundException) {
-                        withContext(Dispatchers.Main.immediate) {
-                            Toast.makeText(this@Interface, e.readableMessage, Toast.LENGTH_SHORT).show()
+                        currentCoroutineContext().ensureActive()
+                        if (data.retryAttempt == 0) {
+                            withContext(Dispatchers.Main.immediate) {
+                                Toast.makeText(this@Interface, e.readableMessage, Toast.LENGTH_SHORT).show()
+                            }
+                            data.binder.missingPlugin(e.plugin)
                         }
                         Logs.w(e)
-                        data.binder.missingPlugin(e.plugin)
-                        stopRunner(false, null)
+                        data.retryAttempt = maxOf(data.retryAttempt, 5)
+                        stopRunner(false, null, recover = true)
                     } catch (exc: Throwable) {
+                        io.nekohasekai.sagernet.control.ControlDiagnostics.event("service.start.failed", mapOf("type" to exc.javaClass.simpleName, "category" to VpnRecoveryPolicy.failureCategory(exc.readableMessage)))
+                        // Go reports canceled startup as a native error, not CancellationException.
+                        currentCoroutineContext().ensureActive()
                         if (exc.readableMessage.contains("no working DNS resolvers found", ignoreCase = true)) {
                             withContext(Dispatchers.Main.immediate) {
                                 Toast.makeText(
@@ -614,7 +747,7 @@ class BaseService {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
-                            stopRunner(false, null)
+                            stopRunner(false, null, recover = true)
                             return@withLock
                         }
                         if (exc.javaClass.name.endsWith("proxyerror")) {
@@ -624,14 +757,14 @@ class BaseService {
                             Logs.w(exc)
                         }
                         stopRunner(
-                            false, "${getString(R.string.service_failed)}: ${exc.readableMessage}"
+                            false, "${getString(R.string.service_failed)}: ${exc.readableMessage}", recover = true
                         )
                     } finally {
                         data.connectingJob = null
                     }
                 }
             }
-            return Service.START_NOT_STICKY
+            return Service.START_STICKY
         }
     }
 

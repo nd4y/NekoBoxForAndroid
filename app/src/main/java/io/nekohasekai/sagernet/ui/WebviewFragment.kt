@@ -1,5 +1,7 @@
 package io.nekohasekai.sagernet.ui
 
+import androidx.core.net.toUri
+import java.lang.ref.WeakReference
 import android.annotation.SuppressLint
 import android.net.LocalSocket
 import android.net.LocalSocketAddress
@@ -176,7 +178,7 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
             ViewGroup.LayoutParams.MATCH_PARENT,
         )
         val retained = retainedDashboardWebView
-        if (retained != null && retainedDashboardSignature == signature) {
+        if (retained != null && retained.context === requireContext() && retainedDashboardSignature == signature) {
             (retained.parent as? ViewGroup)?.removeView(retained)
             container.addView(retained, 0, layoutParams)
             return retained
@@ -425,7 +427,7 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
         retainedDashboardLoaded = true
         dashboardLoadAttempts++
         webView.visibility = View.INVISIBLE
-        webView.loadUrl(url, dashboardHeaders(Uri.parse(url)))
+        webView.loadUrl(url, dashboardHeaders(url.toUri()))
     }
 
     private fun shouldRetryDashboardLoad(uri: Uri?): Boolean {
@@ -460,7 +462,7 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
 
     private fun seedDashboardEndpoint(url: String?) {
         if (dashboardEndpointSeeded) return
-        val uri = Uri.parse(url ?: return)
+        val uri = (url ?: return).toUri()
         val headers = dashboardHeaders(uri)
         if (headers.isEmpty() || uri.path?.startsWith("/ui") != true) return
         dashboardEndpointSeeded = true
@@ -742,7 +744,7 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
 
         @JavascriptInterface
         fun request(method: String, url: String, headersJson: String?, body: String?): String {
-            val uri = normalizeDashboardUri(Uri.parse(url))
+            val uri = normalizeDashboardUri(url.toUri())
             val authHeaders = dashboardHeaders(uri)
             if (!DataStore.hideClashApi || authHeaders.isEmpty()) {
                 return JSONObject()
@@ -804,7 +806,7 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
                 emitDashboardWebSocketEvent(id, "close", JSONObject())
                 return
             }
-            val uri = normalizeDashboardUri(Uri.parse(url))
+            val uri = normalizeDashboardUri(url.toUri())
             val authHeaders = dashboardHeaders(uri)
             if (authHeaders.isEmpty()) {
                 emitDashboardWebSocketEvent(id, "error", JSONObject().put("message", "Forbidden"))
@@ -1016,7 +1018,10 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
         private const val DASHBOARD_LOAD_ATTEMPTS = 3
         private const val DASHBOARD_LOAD_RETRY_DELAY_MS = 500L
 
-        private var retainedDashboardWebView: WebView? = null
+        private var retainedDashboardWebViewReference = WeakReference<WebView>(null)
+        private var retainedDashboardWebView: WebView?
+            get() = retainedDashboardWebViewReference.get()
+            set(value) { retainedDashboardWebViewReference = WeakReference(value) }
         private var retainedDashboardSignature: DashboardSignature? = null
         private var retainedDashboardEndpointSeeded = false
         private var retainedDashboardLoaded = false

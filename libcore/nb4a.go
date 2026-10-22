@@ -1,11 +1,15 @@
 package libcore
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	mDNS "github.com/miekg/dns"
 	"libcore/device"
 	"libcore/masterdnsvpnbridge"
 	"libcore/protect"
+	nbout "libcore/protocol/netbird"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -74,6 +78,42 @@ func InitCore(process, cachePath, internalAssets, externalAssets string,
 		return intfBox.AutoDetectInterfaceControl(int32(fd))
 	})
 
+	installNetBirdSocketProtector()
+	nbout.PhysicalResolver = func(ctx context.Context, host string) ([]net.IPAddr, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		var result []net.IPAddr
+		var last error
+		for _, kind := range []uint16{mDNS.TypeA, mDNS.TypeAAAA} {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			request := new(mDNS.Msg)
+			request.SetQuestion(mDNS.Fqdn(host), kind)
+			response, err := gLocalDNSTransport.Exchange(ctx, request)
+			if err != nil {
+				last = err
+				continue
+			}
+			for _, rr := range response.Answer {
+				switch rr := rr.(type) {
+				case *mDNS.A:
+					result = append(result, net.IPAddr{IP: rr.A})
+				case *mDNS.AAAA:
+					result = append(result, net.IPAddr{IP: rr.AAAA})
+				}
+			}
+			// IPv4 is preferred on Android; avoid a second slow query when usable.
+			if len(result) > 0 {
+				return result, nil
+			}
+		}
+		if len(result) == 0 && last == nil {
+			last = errors.New("physical DNS returned no addresses")
+		}
+		return result, last
+	}
 	// Working dir
 	tmp := filepath.Join(cachePath, "../no_backup")
 	os.MkdirAll(tmp, 0755)
@@ -81,6 +121,9 @@ func InitCore(process, cachePath, internalAssets, externalAssets string,
 	protectPath = filepath.Join(tmp, "protect_path")
 	workingPath = tmp
 	tempPath = cachePath
+	if err := setupNativeCrashOutput(workingPath, isBgProcess); err != nil {
+		log.Printf("native crash output unavailable: %v", err)
+	}
 
 	// sing-box fs
 	resourcePaths = append(resourcePaths, externalAssets)

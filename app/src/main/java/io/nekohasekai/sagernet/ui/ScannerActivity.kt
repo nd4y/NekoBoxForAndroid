@@ -222,6 +222,7 @@ class ScannerActivity : ThemedActivity() {
         }
     }
 
+    @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
     private fun startCameraX() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
@@ -298,6 +299,7 @@ class ScannerActivity : ThemedActivity() {
         }
     }
 
+    @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
     private fun decodeQrCodesFromImageProxy(imageProxy: ImageProxy): List<String> {
         val image = imageProxy.image ?: return emptyList()
         val yPlane = image.planes[0]

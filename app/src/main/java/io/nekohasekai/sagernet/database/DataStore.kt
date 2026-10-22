@@ -1,5 +1,6 @@
 package io.nekohasekai.sagernet.database
 
+import androidx.core.net.toUri
 import android.net.Uri
 import android.os.Binder
 import androidx.preference.PreferenceDataStore
@@ -333,7 +334,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     fun resolvedYacdURL(): String {
         if (hideClashApi) return defaultYacdURL
         val current = yacdURL.takeIf { it.isNotBlank() } ?: return defaultYacdURL
-        val uri = Uri.parse(current)
+        val uri = current.toUri()
         val host = uri.host ?: return current
         val isLoopbackHost = host == CLASH_API_HOST ||
             host == CLASH_API_DASHBOARD_HOST ||
