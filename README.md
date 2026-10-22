@@ -13,27 +13,27 @@
 
 ## Supported Protocols
 
-* SOCKS (4/4a/5)
-* HTTP(S)
-* SSH
-* Shadowsocks
-* ShadowsocksR
-* VMess
-* Trojan
-* VLESS
-* AnyTLS/AnyReality
-* Snell 1/2/3/4/5
-* ShadowTLS
-* TUIC
-* Juicity
-* Hysteria 1/2
-* WireGuard
-* AmneziaWG 2.0
-* Trojan-Go (trojan-go-plugin)
-* NaïveProxy
-* Mieru (mieru-plugin)
-* ByeDPI
-* MasterDnsVPN
+- SOCKS (4/4a/5)
+- HTTP(S)
+- SSH
+- Shadowsocks
+- ShadowsocksR
+- VMess
+- Trojan
+- VLESS
+- AnyTLS/AnyReality
+- Snell 1/2/3/4/5
+- ShadowTLS
+- TUIC
+- Juicity
+- Hysteria 1/2
+- WireGuard
+- AmneziaWG 2.0
+- Trojan-Go (trojan-go-plugin)
+- NaïveProxy
+- Mieru (mieru-plugin)
+- ByeDPI
+- MasterDnsVPN
 
 <details>
 <summary>XHTTP Extra TLS Configuration Example</summary>
@@ -203,9 +203,9 @@
 
 ## Supported Subscription Format
 
-* Some widely used formats (like Shadowsocks, ClashMeta and v2rayN)
-* Remnawave (only with Happ / v2RayTun spoof)
-* sing-box outbound
+- Some widely used formats (like Shadowsocks, ClashMeta and v2rayN)
+- Remnawave (only with Happ / v2RayTun spoof)
+- sing-box outbound
 
 Only resolving outbound, i.e. nodes, is supported. Information such as diversion rules are ignored.
 
@@ -252,7 +252,7 @@ git -C net checkout {replace with patch target commit from the patch file itself
 git -C net apply ../sing-box/patches/x-slash-net/*.patch
 ```
 
-`byedpi`, `sing-box`, and `libneko` are handled by `buildScript/lib/core/get_source.sh` when they are missing; `byedpi` is patched automatically from `NekoBoxForAndroid/patches/byedpi`. Edit `buildScript/lib/core/get_source_env.sh` to point the app to the correct repositories and commits: it's important to have correct 
+`byedpi`, `sing-box`, and `libneko` are handled by `buildScript/lib/core/get_source.sh` when they are missing; `byedpi` is patched automatically from `NekoBoxForAndroid/patches/byedpi`. Edit `buildScript/lib/core/get_source_env.sh` to point the app to the correct repositories and commits: it's important to have correct
 commit hashes there or you'll end up with broken build.
 
 Install Android SDK/NDK, Docker or a Docker-compatible Podman setup, and Android Studio's JBR. Then download runtime assets and build the Go core inside the container:
@@ -304,3 +304,7 @@ Android GUI:
 Web Dashboard:
 
 - [metacubexd](https://github.com/MetaCubeX/metacubexd)
+
+## Development standard
+
+This repository adopts version 0.4.0 of the shared development standard. Read the [English guide](docs/en/development-standard.md) or [Russian guide](docs/ru/development-standard.md). The local toolkit checks staged secrets, changed-file formatting and bilingual documentation before merge. Existing product CI remains in place. Adoption is in progress; product acceptance and legacy-document translation are recorded separately in .repo-policy.json.
